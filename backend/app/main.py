@@ -46,6 +46,10 @@ def error(status_code: int, code: str, message: str):
     raise HTTPException(status_code=status_code, detail={"error": {"code": code, "message": message, "details": {}}})
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 class CustomerBody(BaseModel):
     customerId: str = "elise"
 
@@ -66,7 +70,7 @@ class PolicyBody(CustomerBody):
 class PassportBody(CustomerBody):
     purpose: str
     selectedFields: list[str] = Field(default_factory=list)
-    ttlHours: int = 24
+    ttlHours: int = Field(default=24, ge=1, le=168)
 
 
 @app.get("/api/health")
@@ -198,7 +202,7 @@ def policy(body: PolicyBody):
     state_obj = repo.get_state(body.customerId)
     allowed, decision, code, reason = evaluate_action(state_obj, body.action)
     record = PolicyDecision(
-        id=f"policy_{len(str(uuid4()))}",
+        id=f"policy_{uuid4().hex}",
         customerId=body.customerId,
         stateId=body.stateId,
         action=body.action,
@@ -227,9 +231,9 @@ def create_passport(body: PassportBody):
         "journeyProgress": [s.key for s in journey_obj.steps if s.status == "done"] if journey_obj else [],
         "unresolvedQuestions": repo.seed.unresolvedQuestions if isinstance(repo, MockRepository) else [],
     }
-    created = datetime(2026, 9, 30, 18, 0, tzinfo=timezone.utc)
+    created = utc_now()
     passport = ContextPassport(
-        id="pass_001",
+        id=f"pass_{uuid4().hex}",
         customerId=body.customerId,
         purpose=body.purpose,
         fields={k: values[k] for k in body.selectedFields},
@@ -245,4 +249,7 @@ def get_passport(passport_id: str):
     item = get_repository().get_passport(passport_id)
     if not item:
         error(404, "PASSPORT_NOT_FOUND", "Context Passport not found")
+    expires_at = datetime.fromisoformat(item.expiresAt.replace("Z", "+00:00"))
+    if item.revokedAt is not None or expires_at <= utc_now():
+        error(410, "PASSPORT_EXPIRED", "Context Passport expired or revoked")
     return {"passport": item.model_dump()}
