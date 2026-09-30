@@ -27,39 +27,102 @@ async def request(client, method, path, payload=None):
     try:
         response = await client.request(method, path, json=payload)
         status = response.status_code
+        data = response.json() if response.content else None
     except Exception:
         status = 599
-    return (time.perf_counter() - started) * 1000, status
+        data = None
+    return (time.perf_counter() - started) * 1000, status, data
 
 
-async def worker(client, customer_id, scenario):
+async def worker(client, customer_id, scenario, semaphore):
     rows = []
-    if scenario == "read":
-        rows.append(await request(client, "GET", f"/api/customers/{customer_id}"))
-        return rows
+    async with semaphore:
+        if scenario == "read":
+            latency, status, _ = await request(client, "GET", f"/api/customers/{customer_id}")
+            rows.append((latency, status))
+            return rows
 
-    rows.append(await request(client, "POST", "/api/simulation/reset", {"customerId": customer_id}))
-    for event_id in ["evt_salary", "evt_mortgage", "evt_myhome", "evt_rent", "evt_property_doc"]:
-        rows.append(await request(client, "POST", f"/api/simulation/events/{event_id}", {"customerId": customer_id}))
+        latency, status, _ = await request(
+            client,
+            "POST",
+            "/api/simulation/reset",
+            {"customerId": customer_id},
+        )
+        rows.append((latency, status))
 
-    rows.append(await request(client, "GET", f"/api/customers/{customer_id}/state"))
-    rows.append(await request(client, "POST", "/api/policy/evaluate", {
-        "customerId": customer_id,
-        "stateId": "state_home",
-        "action": "PRE_APPROVED_MORTGAGE_OFFER",
-    }))
+        for event_id in ["evt_salary", "evt_mortgage", "evt_myhome", "evt_rent", "evt_property_doc"]:
+            latency, status, _ = await request(
+                client,
+                "POST",
+                f"/api/simulation/events/{event_id}",
+                {"customerId": customer_id},
+            )
+            rows.append((latency, status))
 
-    if scenario == "full":
-        rows.append(await request(client, "POST", "/api/states/state_home/confirm", {"customerId": customer_id}))
-        rows.append(await request(client, "GET", f"/api/customers/{customer_id}/journey"))
-        rows.append(await request(client, "POST", "/api/journeys/journey_home/steps/budget/complete", {"customerId": customer_id}))
-        rows.append(await request(client, "POST", "/api/context-passports", {
-            "customerId": customer_id,
-            "purpose": "load_test",
-            "selectedFields": ["confirmedGoal", "journeyProgress", "unresolvedQuestions"],
-            "ttlHours": 24,
-        }))
-        rows.append(await request(client, "GET", f"/api/context-passports/pass_{customer_id}"))
+        latency, status, _ = await request(client, "GET", f"/api/customers/{customer_id}/state")
+        rows.append((latency, status))
+
+        latency, status, _ = await request(
+            client,
+            "POST",
+            "/api/policy/evaluate",
+            {
+                "customerId": customer_id,
+                "stateId": "state_home",
+                "action": "PRE_APPROVED_MORTGAGE_OFFER",
+            },
+        )
+        rows.append((latency, status))
+
+        if scenario == "full":
+            latency, status, _ = await request(
+                client,
+                "POST",
+                "/api/states/state_home/confirm",
+                {"customerId": customer_id},
+            )
+            rows.append((latency, status))
+
+            latency, status, _ = await request(
+                client,
+                "GET",
+                f"/api/customers/{customer_id}/journey",
+            )
+            rows.append((latency, status))
+
+            latency, status, _ = await request(
+                client,
+                "POST",
+                "/api/journeys/journey_home/steps/budget/complete",
+                {"customerId": customer_id},
+            )
+            rows.append((latency, status))
+
+            latency, status, passport = await request(
+                client,
+                "POST",
+                "/api/context-passports",
+                {
+                    "customerId": customer_id,
+                    "purpose": "load_test",
+                    "selectedFields": [
+                        "confirmedGoal",
+                        "journeyProgress",
+                        "unresolvedQuestions",
+                    ],
+                    "ttlHours": 24,
+                },
+            )
+            rows.append((latency, status))
+
+            passport_id = passport.get("passport", {}).get("id") if isinstance(passport, dict) else None
+            if passport_id:
+                latency, status, _ = await request(
+                    client,
+                    "GET",
+                    f"/api/context-passports/{passport_id}",
+                )
+                rows.append((latency, status))
 
     return rows
 
@@ -69,10 +132,17 @@ async def run(args):
         max_connections=max(args.concurrency, 100),
         max_keepalive_connections=max(args.concurrency, 100),
     )
+    semaphore = asyncio.Semaphore(args.concurrency)
+
     async with httpx.AsyncClient(base_url=args.base_url, limits=limits, timeout=30) as client:
         started = time.perf_counter()
         tasks = [
-            worker(client, f"load_{(i % args.customer_count) + 1:07d}", args.scenario)
+            worker(
+                client,
+                f"load_{(i % args.customer_count) + 1:07d}",
+                args.scenario,
+                semaphore,
+            )
             for i in range(args.requests)
         ]
         nested = await asyncio.gather(*tasks)
@@ -82,6 +152,7 @@ async def run(args):
     latencies = [item[0] for item in flat]
     statuses = Counter(item[1] for item in flat)
     errors = sum(count for code, count in statuses.items() if code >= 400)
+
     print(json.dumps({
         "scenario": args.scenario,
         "concurrency": args.concurrency,
