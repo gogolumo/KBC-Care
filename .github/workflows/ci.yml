@@ -59,40 +59,33 @@ jobs:
       - name: Check launcher syntax
         run: bash -n start.sh
 
-      - name: Start backend
-        working-directory: backend
-        env:
-          USE_MOCK_DATA: "true"
+      - name: Start app with the public launcher
         run: |
-          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/compass-backend.log 2>&1 &
-          echo $! > /tmp/compass-backend.pid
+          bash start.sh > /tmp/compass-launcher.log 2>&1 &
+          echo $! > /tmp/compass-launcher.pid
 
-      - name: Start frontend
-        working-directory: frontend
-        env:
-          BACKEND_URL: http://127.0.0.1:8000
+      - name: Verify one-command frontend-backend integration
         run: |
-          pnpm dev > /tmp/compass-frontend.log 2>&1 &
-          echo $! > /tmp/compass-frontend.pid
-
-      - name: Verify frontend-backend integration
-        run: |
-          for i in {1..40}; do
+          for i in {1..60}; do
             curl -fsS http://127.0.0.1:8000/api/health && break
             sleep 0.5
           done
           curl -fsS http://127.0.0.1:8000/api/health
-          for i in {1..40}; do
+          for i in {1..60}; do
             curl -fsS http://localhost:3000/api/health && break
             sleep 0.5
           done
           curl -fsS http://localhost:3000/api/health
           curl -fsS http://localhost:3000/api/customers | grep -q elise
 
-      - name: Print logs on failure
-        if: failure()
+      - name: Stop launcher
+        if: always()
         run: |
-          echo "=== BACKEND ==="
-          cat /tmp/compass-backend.log 2>/dev/null || true
-          echo "=== FRONTEND ==="
-          cat /tmp/compass-frontend.log 2>/dev/null || true
+          if [ -f /tmp/compass-launcher.pid ]; then
+            kill "$(cat /tmp/compass-launcher.pid)" 2>/dev/null || true
+            sleep 2
+          fi
+
+      - name: Print launcher logs on failure
+        if: failure()
+        run: cat /tmp/compass-launcher.log 2>/dev/null || true
