@@ -19,4 +19,7 @@ RUN npm install --global pnpm@12.8.1
 
 COPY --from=build /app ./
 
+RUN chown -R 1000:1000 /app
+USER 1000
+
 CMD ["sh", "-c", "pnpm exec next start -p ${PORT}"]

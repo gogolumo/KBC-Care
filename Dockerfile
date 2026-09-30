@@ -31,4 +31,7 @@ RUN chmod +x /app/cloud-run.sh
 
 EXPOSE 8080
 
+RUN chown -R 1000:1000 /app
+USER 1000
+
 CMD ["/app/cloud-run.sh"]

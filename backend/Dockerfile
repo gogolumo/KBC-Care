@@ -12,4 +12,7 @@ RUN python -m pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
+RUN useradd -U -u 1000 appuser && chown -R 1000:1000 /app
+USER 1000
+
 CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
