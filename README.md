@@ -28,6 +28,121 @@ The public deployment is a hackathon demo environment using synthetic/mock custo
 
 > The public hackathon deployment runs in a temporary Google Cloud/Qwiklabs environment and may expire after the event.
 
+## 📱 Mobile app
+
+KBC Care also includes a separate **mobile application** built with **Expo + React Native**. It is a native mobile version of the KBC Care customer experience and uses the **same FastAPI backend, API contract, synthetic Elise data and demo flow** as the web application.
+
+The mobile app currently lives in:
+
+```text
+branch: benjamin/mobile
+folder: mobile/
+```
+
+It includes the customer home screen, contextual Care panel, Home Journey, Kate assistant, Context Passport sharing, Adviser View, demo controls, pause/resume controls and backend server selection.
+
+### Ways to run the mobile app
+
+#### Option A — Expo Go on a real phone (recommended for the hackathon)
+
+```bash
+git clone https://github.com/gogolumo/KBC-Care.git
+cd KBC-Care
+git checkout benjamin/mobile
+cd mobile
+npm ci
+
+EXPO_PUBLIC_API_URL="https://kbc-compass-api-kvd5257laq-ew.a.run.app" npx expo start
+```
+
+Scan the QR code with:
+
+- **Android:** Expo Go
+- **iPhone:** Camera / Expo Go
+
+If the phone cannot reach the local Expo development server:
+
+```bash
+EXPO_PUBLIC_API_URL="https://kbc-compass-api-kvd5257laq-ew.a.run.app" npx expo start --tunnel
+```
+
+#### Option B — Android emulator
+
+Start an Android emulator in Android Studio, then:
+
+```bash
+cd mobile
+npm ci
+EXPO_PUBLIC_API_URL="https://kbc-compass-api-kvd5257laq-ew.a.run.app" npx expo start --android
+```
+
+#### Option C — iOS Simulator
+
+Requires macOS + Xcode:
+
+```bash
+cd mobile
+npm ci
+EXPO_PUBLIC_API_URL="https://kbc-compass-api-kvd5257laq-ew.a.run.app" npx expo start --ios
+```
+
+#### Option D — Mobile UI in a browser
+
+```bash
+cd mobile
+npm ci
+EXPO_PUBLIC_API_URL="https://kbc-compass-api-kvd5257laq-ew.a.run.app" npx expo start --web
+```
+
+This is useful for quickly showing the mobile layout without installing anything on a phone.
+
+#### Option E — Build an installable Android APK
+
+Expo Go is enough for the demo, but an APK can also be created with EAS Build:
+
+```bash
+npm install -g eas-cli
+eas login
+
+cd mobile
+eas build -p android --profile preview
+```
+
+The preview build is configured for internal distribution and can be installed directly on Android devices. For an installable build, use the public HTTPS Cloud Run backend through `EXPO_PUBLIC_API_URL`.
+
+#### Option F — Local native builds
+
+Android:
+
+```bash
+cd mobile
+npx expo run:android
+```
+
+iOS (macOS only):
+
+```bash
+cd mobile
+npx expo run:ios
+```
+
+### Mobile/backend architecture
+
+```text
+KBC Care Mobile
+Expo / React Native
+        │
+        │ HTTPS /api/*
+        ▼
+kbc-compass-api
+FastAPI on Google Cloud Run
+        │
+        ▼
+same state engine + policy engine + demo data
+```
+
+For the hackathon, the recommended mobile setup is **Expo Go on a real phone connected to the deployed Cloud Run backend**. This avoids local-network backend problems and keeps the web and mobile demos on the same API.
+
 ## How to run everything
 
 There are three demo surfaces:
@@ -531,6 +646,11 @@ KBC-Care/
 │   ├── app/
 │   ├── lib/
 │   └── package.json
+├── mobile/                   # available in branch benjamin/mobile
+│   ├── App.js
+│   ├── src/
+│   ├── package.json
+│   └── eas.json
 ├── docs/
 ├── performance/
 └── scripts/
