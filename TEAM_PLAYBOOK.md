@@ -48,12 +48,13 @@ Do not build Emma/Lina or a second persona until this flow is fully integrated a
 
 ## Git status observed
 
-- Mock/backend PR #5 has been merged to `main`.
-- FastAPI backend and deterministic mock data are in `main`.
-- `benjamin/backend` and `vlad/frontend` currently have no commits ahead of `main` and are behind the current main branch.
-- A frontend directory is not currently visible in remote `main`.
+- FastAPI backend, deterministic mock data and integration hardening are in `main`.
+- Elise frontend PR #9 has been merged to `main`; the repository now contains `frontend/`.
+- Scalability tooling and the corrected load harness are in `main` via PRs #7, #10 and #11.
+- Guardrail fixes for unique policy/passport IDs and passport expiry are in `main` via PR #8.
+- Legacy MomentOS / Emma / Lina Issues are superseded by the current KBC Compass scope.
 
-If Vlad already has a working frontend locally, **pushing it is the first integration blocker**. Do not rebuild it from scratch just because it is not yet visible remotely.
+The remaining P0 is no longer “push the frontend”. It is **verify the merged `main` from a fresh clone, run the full Elise browser flow twice, and freeze that exact commit for the demo**.
 
 ## Integration audit update — 2026-09-30
 
@@ -63,11 +64,11 @@ If Vlad already has a working frontend locally, **pushing it is the first integr
 | Show 30 → 45 → 63 → 83 from backend | backend previously returned `state: null` before 60 | frontend could not show 30/45 without duplicating scoring | event/reset/play responses now expose backend-computed `confidence` |
 | State card appears only after threshold | GET state is 404 before 60 | none | keep |
 | Call backend from localhost frontend | no CORS middleware | browser requests could fail | allow localhost:3000 / 127.0.0.1:3000 by default; override with `CORS_ORIGINS` |
-| Integrate current frontend | no remote frontend code exists in `main` or `vlad/frontend` | hard blocker | Vlad must push the working frontend; do not rebuild it blindly |
+| Integrate current frontend | Elise frontend is merged in `main` and uses the documented `/api` contract | final merged-main acceptance run still required | run fresh-clone browser E2E twice and freeze the commit |
 
-Current integration status: **backend contract hardened; full frontend ↔ backend E2E still BLOCKED by missing remote frontend source**.
+Current integration status: **frontend and backend are both in `main`; the remaining gate is a final fresh-clone browser E2E on the merged commit, repeated twice without manual repair**.
 
-Canonical frontend rule once pushed:
+Canonical frontend rule:
 
 ```text
 POST event
@@ -119,18 +120,16 @@ Old Issues mentioning MomentOS, Emma, Lina or conflicting scoring are historical
 
 Known doc mismatch to fix: any remaining `78%`/old scoring references should match the deterministic **83** flow.
 
-### 2. Vlad — push and stabilize frontend
+### 2. Vlad — verify merged frontend
 
 Immediate tasks:
 
-- push the working frontend to GitHub;
-- place it in the agreed project structure, preferably `frontend/`;
-- open a PR or coordinate a safe merge;
-- keep existing working UI — do not rewrite it unnecessarily;
-- identify all local hardcoded mocks;
-- route UI through a single API/service layer;
-- add the correct environment variable for backend base URL;
-- keep loading/error/empty states stable.
+- use the merged `frontend/` in `main`; do not rebuild it;
+- run `pnpm build` from a fresh clone;
+- run the browser against the current FastAPI backend;
+- verify loading/error/empty states on the actual demo machine;
+- fix only integration bugs that block the canonical Elise flow;
+- do not reintroduce frontend-side confidence, policy or state logic.
 
 Frontend must not independently calculate confidence or duplicate backend business logic.
 
@@ -314,7 +313,7 @@ Do not add Docker purely for appearance if it reduces reliability.
 ## Final demo checklist
 
 ```text
-[ ] Frontend pushed to GitHub
+[x] Frontend pushed to GitHub
 [ ] Frontend and backend both start from fresh clone
 [ ] Reset works
 [ ] Event playback works
