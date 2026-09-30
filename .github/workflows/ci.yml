@@ -59,6 +59,12 @@ jobs:
       - name: Check launcher syntax
         run: bash -n start.sh
 
+      - name: Build Cloud Run backend container
+        run: docker build -t kbc-compass-api-ci ./backend
+
+      - name: Build Cloud Run frontend container
+        run: docker build -t kbc-compass-frontend-ci ./frontend
+
       - name: Start app with the public launcher
         run: |
           bash start.sh > /tmp/compass-launcher.log 2>&1 &
