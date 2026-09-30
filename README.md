@@ -1,334 +1,155 @@
 # KBC Compass
 
-**KBC Compass is a consent-first customer context engine that turns fragmented banking signals into temporary, explainable customer situations — then uses deterministic policy rules to decide what the bank may safely do next.**
+**KBC Compass turns fragmented customer signals into an explainable customer situation, asks the customer to confirm it, and only then turns that context into safe, relevant next steps.**
 
-> **Understand context first. Decide what is appropriate second. Communicate only after that.**
+> **Signals → Context → Consent → Policy → Experience**
 
-## Overview
+KBC Compass is a hackathon proof of concept for a shared context and orchestration layer that could sit underneath KBC Mobile, Kate and human adviser channels.
 
-Traditional digital banking is good at reacting to products and transactions. The harder problem is understanding when several weak signals together may indicate a changing customer situation — without treating that inference as fact or automatically turning it into a high-impact financial decision.
-
-KBC Compass adds a context, consent and policy layer between raw signals and customer-facing actions.
-
-The current hackathon MVP demonstrates one complete journey for a synthetic customer, **Elise Vermeer**, exploring a possible home purchase.
+The demo uses **synthetic data only**.
 
 ## The problem
 
-A customer may:
+Banks already observe many useful signals: transactions, simulator usage, product journeys, documents and service interactions.
 
-- use a mortgage simulator;
-- revisit a home-buying journey;
-- change housing payment patterns;
-- save a property-related document.
+The difficult part is understanding when several weak signals together may indicate a changing customer situation — without treating that inference as fact or immediately converting it into a commercial action.
 
-Individually, none of these signals proves intent.
-
-A product-first system can easily react too aggressively. KBC Compass instead creates a **temporary hypothesis**, shows the evidence behind it, asks the customer to confirm or reject it, and blocks actions that should never be triggered automatically from behavioral inference.
-
-## How it works
+A simple targeting system can become:
 
 ```text
-Synthetic customer events
-        ↓
-Deterministic State Engine
-        ↓
-Temporary customer state + confidence + evidence
-        ↓
-Deterministic Policy / Consent Gate
-        ↓
-Allowed / blocked / confirmation-required action
-        ↓
-Customer confirmation
-        ↓
-Personalized Home Journey
-        ↓
-Scoped Context Passport
-        ↓
-KBC Live adviser view
+Mortgage simulator used
+→ show mortgage offer
 ```
 
-The core separation is:
-
-1. **Observed event** — what happened.
-2. **Evidence** — what signal contributes to a possible state.
-3. **Hypothesis** — a temporary state such as `possible_home_purchase`.
-4. **Customer confirmation** — the customer confirms or rejects the hypothesis.
-5. **Policy decision** — the system decides which actions are allowed.
-6. **Scoped sharing** — only customer-approved context is passed to the adviser.
-
-## Demo scenario
-
-The canonical demo customer is:
+KBC Compass separates the steps:
 
 ```text
-Elise Vermeer
-customerId: elise
-persona: home_purchase
+Multiple weak signals
+→ temporary customer context
+→ explanation + confidence
+→ policy check
+→ customer confirmation
+→ personalized journey
 ```
 
-The backend replays five synthetic events in order:
+## The demo
 
-| Step | Event | Confidence |
-|---|---|---:|
-| 1 | Salary received | 0 |
-| 2 | Mortgage simulation completed | 30 |
-| 3 | Repeated MyHome visits | 45 |
-| 4 | Rent pattern changed | 63 |
-| 5 | Property document saved | 83 |
+The canonical customer is **Elise**, who may be exploring a home purchase.
 
-At **60+**, the state engine exposes a customer-facing `possible_home_purchase` hypothesis.
+Five synthetic events arrive:
 
-The intended demo flow is:
+1. Salary received
+2. Mortgage simulation completed
+3. MyHome visited several times
+4. Housing payment pattern changed
+5. Property document saved
+
+Compass combines the evidence. The deterministic rule score progresses:
 
 ```text
-Reset
-→ Play next through all five events (or Play all)
-→ Open “Why am I seeing this?”
-→ Evaluate a pre-approved mortgage action
-→ See the policy engine BLOCK it
-→ Elise confirms the home-purchase goal
-→ Home Journey appears
-→ Complete a journey step
-→ Share selected context with KBC Live
-→ Open Adviser View
+0 → 30 → 45 → 63 → 83
 ```
 
-The adviser receives only the fields Elise explicitly selected. Raw transactions and the full event history are excluded.
+At the activation threshold, Compass surfaces:
 
-## Safety / policy moment
+> **We think you may be exploring a home purchase**
 
-The canonical risky action is:
+Elise can see why the context appeared and choose:
 
-```text
-PRE_APPROVED_MORTGAGE_OFFER
-```
+- **Yes, help me explore**
+- **Not relevant**
 
-The policy engine returns:
+Before confirmation, Compass demonstrates an important boundary: a **pre-approved mortgage offer is blocked** by the policy engine. Understanding a situation does not mean the bank has permission to turn an inferred context into a high-impact credit action.
 
-```json
-{
-  "allowed": false,
-  "decision": "BLOCK",
-  "policyCode": "HIGH_IMPACT_CREDIT_DECISION",
-  "reason": "High-impact credit-related action cannot be derived automatically from behavioral inference."
-}
-```
+After Elise confirms, a personalized Home Journey becomes available. If she later speaks with KBC Live, she chooses which context to share through a temporary Context Passport.
 
-This is intentional. Behavioral context may help decide what question to ask or what educational journey to show, but it must not automatically become a credit decision.
+## Why this is not just a recommendation engine
 
-## Architecture
+A recommendation engine mainly answers:
 
-```text
-┌─────────────────────────────────────────────┐
-│                 Next.js UI                  │
-│  Customer View · Event Simulation · Adviser │
-└──────────────────────┬──────────────────────┘
-                       │ /api/* via Next.js rewrite
-                       ▼
-┌─────────────────────────────────────────────┐
-│                FastAPI Backend              │
-├─────────────────────────────────────────────┤
-│ API layer                                   │
-│ Deterministic state engine                  │
-│ Deterministic policy engine                 │
-│ Journey orchestration                       │
-│ Context Passport logic                      │
-│ Repository abstraction                      │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│          MockRepository (hackathon)         │
-│  JSON seed + mutable in-memory demo state   │
-└─────────────────────────────────────────────┘
-```
+> What should we show?
 
-The frontend does **not** maintain a separate fake API implementation. It talks to the same `/api` contract used by the backend.
+Compass first answers:
 
-## Tech stack
+> What situation is supported by the evidence?
 
-### Frontend
+Then:
 
-- Next.js 15
-- React 19
-- JavaScript
-- Tailwind CSS 4
-- Next.js rewrites for backend proxying
+> Is this action appropriate?
 
-### Backend
+And finally:
 
-- Python
-- FastAPI
-- Pydantic
-- Uvicorn
-- in-memory repository for mutable hackathon state
-- JSON seed data
+> Does the customer want this context to shape their experience?
 
-### Testing / performance
+That separation between **inference, consent and action** is the core concept.
 
-- pytest
-- httpx
-- Locust
-- custom bounded-concurrency benchmark runner
+## Run locally
 
-## Repository structure
+### Fastest path — one command
 
-```text
-hackathon/
-├── README.md
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── models/
-│   │   ├── repositories/
-│   │   ├── services/
-│   │   └── seed/
-│   │       └── elise.json
-│   ├── tests/
-│   ├── Makefile
-│   └── requirements.txt
-├── frontend/
-│   ├── app/
-│   ├── lib/
-│   ├── next.config.mjs
-│   ├── package.json
-│   └── pnpm-lock.yaml
-├── docs/
-├── performance/
-└── scripts/
-```
+Requirements:
 
-## API
-
-Base path:
-
-```text
-/api
-```
-
-Important endpoints implemented by the current backend:
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/api/health` | Backend health + mock mode |
-| GET | `/api/customers` | List demo customers |
-| GET | `/api/customers/{id}` | Fetch customer |
-| POST | `/api/simulation/reset` | Reset demo state |
-| POST | `/api/simulation/events/{eventId}` | Inject one predefined event |
-| POST | `/api/simulation/play` | Apply remaining events |
-| GET | `/api/customers/{id}/state` | Get current inferred/confirmed state |
-| POST | `/api/states/{id}/confirm` | Confirm a state |
-| POST | `/api/states/{id}/reject` | Reject a state |
-| GET | `/api/customers/{id}/journey` | Get Home Journey |
-| POST | `/api/journeys/{id}/steps/{stepId}/complete` | Complete a journey step |
-| POST | `/api/policy/evaluate` | Evaluate a proposed action |
-| POST | `/api/context-passports` | Create scoped adviser context |
-| GET | `/api/context-passports/{id}` | Read an active passport |
-
-Full contract: [docs/API_CONTRACT.md](docs/API_CONTRACT.md)
-
-## Mock / demo data
-
-The project is designed to run without:
-
-- real KBC customer data;
-- production KBC APIs;
-- CRM integration;
-- adviser integration;
-- external AI services.
-
-The canonical seed is:
-
-```text
-backend/app/seed/elise.json
-```
-
-It contains:
-
-- Elise;
-- five synthetic events;
-- Home Journey step templates;
-- unresolved questions used in the Context Passport.
-
-Mutable demo state is stored in memory:
-
-- applied events;
-- inferred state;
-- journey state;
-- policy decisions;
-- Context Passports.
-
-Resetting the demo restores deterministic behavior.
-
-## Local development
-
-### Requirements
-
-Recommended:
-
+- macOS or Linux
 - Python 3.10+
 - Node.js 20+
-- pnpm
+- Git
 
-Clone the repository:
+Clone and start:
 
 ```bash
 git clone https://github.com/gogolumo/hackathon.git
 cd hackathon
+make dev
 ```
 
-If pnpm is unavailable:
+If `make` is unavailable:
 
 ```bash
-corepack enable
-corepack prepare pnpm@latest --activate
+bash start.sh
 ```
 
-### Terminal 1 — backend
+The launcher automatically:
+
+- creates `backend/.venv` when needed;
+- installs Python dependencies when needed;
+- validates the Elise synthetic seed;
+- installs frontend dependencies;
+- uses local `pnpm`, Corepack or an `npx pnpm` fallback;
+- starts FastAPI on port 8000;
+- starts Next.js on port 3000;
+- verifies backend and frontend health;
+- opens the app automatically on macOS;
+- stops both processes when you press `Ctrl+C`.
+
+Open:
+
+- App: http://localhost:3000
+- API: http://127.0.0.1:8000
+- Health: http://127.0.0.1:8000/api/health
+- FastAPI docs: http://127.0.0.1:8000/docs
+
+Expected health response:
+
+```json
+{"ok":true,"mockMode":true}
+```
+
+### Manual fallback
+
+Backend:
 
 ```bash
 cd backend
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 export USE_MOCK_DATA=true
 python -m app.seed.validate
-pytest -q
-python -m uvicorn app.main:app --reload --port 8000
+python -m pytest -q
+python -m uvicorn app.main:app --port 8000
 ```
 
-Windows PowerShell:
-
-```powershell
-cd backend
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-$env:USE_MOCK_DATA="true"
-python -m app.seed.validate
-pytest -q
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-Backend:
-
-```text
-http://127.0.0.1:8000
-```
-
-Health check:
-
-```text
-http://127.0.0.1:8000/api/health
-```
-
-FastAPI docs:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-### Terminal 2 — frontend
+Frontend, in a second terminal:
 
 ```bash
 cd frontend
@@ -336,99 +157,125 @@ pnpm install
 pnpm dev
 ```
 
-Open:
-
-```text
-http://localhost:3000
-```
-
-## Environment variables
-
-### Backend
-
-`backend/.env.example` currently documents:
-
-```text
-USE_MOCK_DATA=true
-```
-
-For the demo, start the backend with `USE_MOCK_DATA=true`.
-
-Additional optional backend environment variables supported by the code:
-
-```text
-CORS_ORIGINS
-LOAD_TEST_CUSTOMERS
-```
-
-### Frontend
-
-By default, the frontend proxies `/api/*` to:
-
-```text
-http://127.0.0.1:8000
-```
-
-Override it with:
+If `pnpm` is not installed, you can use:
 
 ```bash
-BACKEND_URL=http://127.0.0.1:8001 pnpm dev
+npx --yes pnpm@12.8.1 install
+npx --yes pnpm@12.8.1 dev
 ```
 
-## Frontend ↔ backend integration
+## Demo flow
 
-Browser code calls relative routes such as:
+A presenter should be able to tell the whole story in a few actions:
 
 ```text
-/api/customers
-/api/simulation/events/...
-/api/policy/evaluate
-/api/context-passports
+Reset
+→ Run demo
+→ Watch signals accumulate
+→ Open “Why am I seeing this?”
+→ Show policy decision: BLOCK
+→ “Yes, help me explore”
+→ Complete a Home Journey step
+→ Share with KBC Live
+→ Adviser View
 ```
 
-Next.js rewrites those requests server-side to FastAPI:
+The strongest demo moment is the transition:
+
+```text
+5 weak signals
+→ Possible Home Purchase
+→ policy blocks unsafe automation
+→ Elise confirms
+→ Home Journey activates
+```
+
+## Architecture
 
 ```text
 Browser
-  ↓
-http://localhost:3000/api/*
-  ↓
-Next.js rewrite
-  ↓
-http://127.0.0.1:8000/api/*
+   ↓
+Next.js frontend
+   ↓ /api/*
+FastAPI backend
+   ↓
+Deterministic State Engine
+   ↓
+Temporary customer context
+   ↓
+Deterministic Policy / Consent Gate
+   ↓
+Personalized Journey
+   ↓
+Customer-approved Context Passport
+   ↓
+KBC Live adviser view
 ```
 
-Default local setup:
+The frontend uses relative `/api/*` routes. Next.js rewrites them to FastAPI at `http://127.0.0.1:8000` by default.
 
-```text
-Frontend:  http://localhost:3000
-Backend:   http://127.0.0.1:8000
-Proxy:     /api/* → http://127.0.0.1:8000/api/*
-```
+## Trust by design
 
-This keeps the browser on one origin during normal development.
+The MVP deliberately demonstrates:
 
-## Testing
+- synthetic customer data only;
+- multi-signal inference rather than single-event targeting;
+- visible evidence;
+- a temporary state with expiry;
+- deterministic rule scoring;
+- customer confirmation or rejection;
+- a separate policy gate;
+- blocked high-impact credit automation;
+- scoped, time-limited adviser sharing;
+- exclusion of raw transactions from the adviser Context Passport.
 
-### Backend tests
+The confidence value is a **rule score, not a probability and not a credit score**.
+
+## Scalability
+
+The target is a bank-scale **customer population of up to approximately two million customers**, not two million simultaneous HTTP connections.
+
+The repository includes load-test tooling and lazy synthetic load-customer addressing. Local smoke measurements cover representative read, business and complete-flow paths.
+
+The current hackathon repository intentionally uses one FastAPI process with in-memory mutable state. Real horizontal production scaling would require stateless API workers backed by shared persistence/cache.
+
+See [docs/SCALABILITY.md](docs/SCALABILITY.md) for measured results, limits and the production path.
+
+## Tech stack
+
+**Frontend**
+
+- Next.js 15
+- React 19
+- Tailwind CSS 4
+- pnpm
+
+**Backend**
+
+- FastAPI
+- Pydantic
+- Uvicorn
+- deterministic state engine
+- deterministic policy engine
+- in-memory mock repository
+
+**Testing / performance**
+
+- pytest
+- Node test runner / Next.js build
+- Locust
+- bounded-concurrency benchmark runner
+
+## Validate the project
+
+Backend:
 
 ```bash
 cd backend
-USE_MOCK_DATA=true pytest -q
+USE_MOCK_DATA=true python -m pytest -q
 ```
 
-or:
-
-```bash
-cd backend
-make test
-```
-
-Backend tests cover the demo flow, guardrails and load-support behavior.
-
-### Frontend
-
-Available package scripts:
+Frontend:
 
 ```bash
 cd frontend
@@ -436,173 +283,61 @@ pnpm test
 pnpm build
 ```
 
-## Deterministic decisioning
-
-The critical state and policy logic is deterministic.
-
-For the same ordered event inputs:
-
-```text
-same events
-→ same evidence
-→ same confidence
-→ same state
-→ same policy result
-```
-
-The current confidence score is a rule score, **not a probability**.
-
-The state engine uses explicit event weights:
-
-```text
-mortgage_simulation_completed  +30
-myhome_repeated_visits         +15
-rent_pattern_changed           +18
-property_document_saved        +20
-                              ----
-                               83
-```
-
-The customer-facing hypothesis activates at 60.
-
-The policy engine uses explicit allow/block rules and defaults unknown actions to blocked.
-
-No LLM participates in state inference, credit decisions or policy enforcement in the current implementation. The product documentation only reserves optional AI usage for wording or summaries.
-
-## Scalability
-
-The scalability target is a **bank-scale customer population of up to approximately 2,000,000 customers**.
-
-That does **not** mean two million simultaneous HTTP connections.
-
-The repository includes:
-
-- `performance/locustfile.py`
-- `performance/full_flow_locust.py`
-- `performance/run_benchmark.py`
-- `scripts/generate_load_data.py`
-- `scripts/measure_customer_memory.py`
-
-Synthetic load IDs are generated/addressed lazily rather than pre-allocating two million customer objects.
-
-### Run local load support
-
-Backend:
+Integration, while the app is running:
 
 ```bash
-cd backend
-USE_MOCK_DATA=true LOAD_TEST_CUSTOMERS=2000000 \
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+curl http://127.0.0.1:8000/api/health
+curl http://localhost:3000/api/health
+curl http://localhost:3000/api/customers
 ```
 
-Benchmark commands:
+## Submission / pitch material
 
-```bash
-cd backend
-make perf-smoke
-make perf-load
-make perf-stress
-```
-
-Locust:
-
-```bash
-pip install -r performance/requirements.txt
-LOAD_TEST_CUSTOMERS=2000000 \
-locust -f performance/locustfile.py --host http://127.0.0.1:8000
-```
-
-### Recorded local smoke reference
-
-The repository documents measurements from **2026-09-30** on a single Uvicorn process with in-memory mock storage:
-
-| Scenario | Concurrency | HTTP requests | RPS | p50 | p95 | p99 | Error rate |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Read | 50 | 200 | 312.77 | 78.13 ms | 386.18 ms | 443.98 ms | 0% |
-| Business | 25 | 400 | 450.92 | 27.19 ms | 152.25 ms | 259.10 ms | 0% |
-| Full flow | 10 | 260 | 632.23 | 7.40 ms | 41.58 ms | 70.02 ms | 0% |
-
-These are hackathon smoke measurements, **not a production capacity forecast**.
-
-### Current scalability limit
-
-The current `MockRepository` stores mutable state inside one Python process.
-
-Multiple independent API workers therefore do not share:
-
-- applied events;
-- states;
-- journeys;
-- policy records;
-- Context Passports.
-
-That is acceptable for the hackathon demo, but it prevents real horizontal scaling.
-
-A production path would require stateless API workers backed by shared persistence/cache.
-
-See [docs/SCALABILITY.md](docs/SCALABILITY.md).
-
-## Hackathon scope
-
-This repository is a prototype, not a production banking system.
-
-Current boundaries:
-
-- synthetic customer data only;
-- one canonical product scenario;
-- deterministic rule-based state inference;
-- prototype policy rules;
-- in-memory mutable state;
-- no production authentication/authorization layer;
-- no real KBC infrastructure integration;
-- no credit approval or underwriting;
-- no production-grade persistence;
-- no claim of two million simultaneous users;
-- no dependency on an external LLM for the demo.
-
-## Documentation
-
-- [Product](docs/PRODUCT.md)
-- [MVP Scope](docs/MVP.md)
-- [90-second Demo Story](docs/DEMO_STORY.md)
+- [Plain-language product explainer](docs/PRODUCT_EXPLAINER.md)
+- [Pitch cheatsheet](docs/PITCH_CHEATSHEET.md)
+- [Submission copy + <3 minute video script](docs/SUBMISSION.md)
+- [90-second demo story](docs/DEMO_STORY.md)
+- [API contract](docs/API_CONTRACT.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [State Engine](docs/STATE_ENGINE.md)
-- [Policy Engine](docs/POLICY_ENGINE.md)
-- [Data Model](docs/DATA_MODEL.md)
-- [API Contract](docs/API_CONTRACT.md)
-- [Frontend Spec](docs/FRONTEND_SPEC.md)
-- [Backend Spec](docs/BACKEND_SPEC.md)
-- [Mock Data](docs/MOCK_DATA.md)
-- [AI Usage](docs/AI_USAGE.md)
-- [Privacy & Safety](docs/PRIVACY_AND_SAFETY.md)
-- [Scalability](docs/SCALABILITY.md)
-- [Development Plan](docs/DEVELOPMENT_PLAN.md)
-- [Decision Log](docs/DECISIONS.md)
+- [Privacy & safety](docs/PRIVACY_AND_SAFETY.md)
+- [Scalability validation](docs/SCALABILITY.md)
 
-Legacy concept documents such as `KBC_MOMENTOS.md` and `PROJECT_CONTEXT.md` remain in the repository for history. The working code, this README and the current `docs/` directory define the active MVP.
+## Repository structure
 
-## Team
+```text
+hackathon/
+├── start.sh
+├── Makefile
+├── README.md
+├── backend/
+│   ├── app/
+│   ├── tests/
+│   └── requirements.txt
+├── frontend/
+│   ├── app/
+│   ├── lib/
+│   └── package.json
+├── docs/
+├── performance/
+└── scripts/
+```
 
-- **Bogdan — Product Lead / Orchestrator**  
-  MVP scope, product decisions, testing, demo flow, pitch and integration coordination.
+## Hackathon boundaries
 
-- **Benjamin — Tech Lead / Backend**  
-  FastAPI, architecture, state engine, policy engine, API, mock repository, performance work and backend deployment.
+This is a prototype, not a production banking system.
 
-- **Vlad — Frontend / UX**  
-  Customer/adviser experience, UI/UX, event visualization, journey flow and backend integration.
+It does **not** claim:
 
-## Future development
+- access to real KBC customer data;
+- production KBC API integration;
+- credit approval or underwriting;
+- production authentication/authorization;
+- production-grade persistence;
+- two million simultaneous active users;
+- that KBC currently lacks personalization.
 
-The next production-oriented steps are:
-
-- replace in-memory mutable state with shared persistence;
-- make API workers stateless and horizontally scalable;
-- connect approved production data/event sources;
-- introduce configurable policy rules and audit tooling;
-- add production authentication, authorization and observability;
-- validate performance on production-like infrastructure.
+The critical state and policy logic in this MVP is deterministic and auditable. No LLM participates in state inference, policy enforcement or credit decisions.
 
 ---
 
-**Demo thesis:** KBC Compass turns weak signals into an explainable hypothesis, blocks unsafe automation, asks the customer to confirm the goal, and only then turns that context into useful action.
+**Demo thesis:** KBC Compass combines weak signals into an explainable temporary situation, blocks inappropriate automation, asks the customer to confirm the context, and only then adapts the banking journey.
