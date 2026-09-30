@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import os
-from uuid import uuid4
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -14,10 +14,17 @@ from app.models.domain import ContextPassport, PolicyDecision
 from app.repositories.factory import get_repository, mock_enabled
 from app.repositories.mock import MockRepository
 from app.services.journeys import create_home_journey
-from app.services.policy_engine import evaluate_action
+from app.services.policy_engine import evaluate_action, safe_alternative
 from app.services.state_engine import calculate_confidence
 
 app = FastAPI(title="KBC Compass Demo API", version="0.1.0")
+
+# Fixed demo clock: every replay produces byte-identical timestamps.
+DEMO_NOW = datetime(2026, 9, 30, 18, 0, tzinfo=timezone.utc)
+
+
+def _iso(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 cors_origins = [
     origin.strip()
@@ -62,7 +69,8 @@ class CustomerBody(BaseModel):
 
 
 class PlayBody(CustomerBody):
-    mode: str = "remaining"
+    # "remaining": apply every not-yet-applied event; "next": apply exactly one.
+    mode: Literal["remaining", "next"] = "remaining"
 
 
 class RejectBody(CustomerBody):
@@ -77,7 +85,8 @@ class PolicyBody(CustomerBody):
 class PassportBody(CustomerBody):
     purpose: str
     selectedFields: list[str] = Field(default_factory=list)
-    ttlHours: int = 24
+    # 0 creates an already-expired passport (useful to test the expired UI state).
+    ttlHours: int = Field(default=24, ge=0, le=168)
 
 
 @app.get("/api/health")
@@ -131,12 +140,16 @@ def inject_event(event_id: str, body: CustomerBody = CustomerBody()):
 @app.post("/api/simulation/play")
 def play(body: PlayBody):
     repo = get_repository()
+    if not repo.customer(body.customerId):
+        error(404, "CUSTOMER_NOT_FOUND", "Customer not found")
     applied_ids = {e.id for e in repo.applied_events(body.customerId)}
     applied = []
     for event in repo.available_events(body.customerId):
         if event.id not in applied_ids:
             repo.apply_event(body.customerId, event.id)
             applied.append(event.model_dump())
+            if body.mode == "next":
+                break
     state_obj = repo.get_state(body.customerId)
     confidence = calculate_confidence(repo.applied_events(body.customerId))
     return {"events": applied, "confidence": confidence, "state": state_obj.model_dump() if state_obj else None}
@@ -156,8 +169,12 @@ def confirm(state_id: str, body: CustomerBody):
     item = repo.get_state(body.customerId)
     if not item or item.id != state_id:
         error(404, "STATE_NOT_FOUND", "State not found")
+    existing = repo.get_journey(body.customerId)
     item.status = "confirmed"
     repo.save_state(item)
+    if existing and existing.stateId == item.id:
+        # Idempotent: a double click must not reset journey progress.
+        return {"state": item.model_dump(), "journeyId": existing.id}
     template = repo.seed.journeyTemplate if isinstance(repo, MockRepository) else []
     journey = create_home_journey(body.customerId, item, template)
     repo.save_journey(journey)
@@ -199,6 +216,8 @@ def complete_step(journey_id: str, step_id: str, body: CustomerBody = CustomerBo
             break
     if not found:
         error(404, "JOURNEY_STEP_NOT_FOUND", "Journey step not found")
+    if all(step.status == "done" for step in item.steps):
+        item.status = "completed"
     repo.save_journey(item)
     return {"journey": item.model_dump()}
 
@@ -209,7 +228,7 @@ def policy(body: PolicyBody):
     state_obj = repo.get_state(body.customerId)
     allowed, decision, code, reason = evaluate_action(state_obj, body.action)
     record = PolicyDecision(
-        id=f"policy_{len(str(uuid4()))}",
+        id=f"policy_{body.customerId}_{body.action.lower()}",
         customerId=body.customerId,
         stateId=body.stateId,
         action=body.action,
@@ -217,10 +236,16 @@ def policy(body: PolicyBody):
         decision=decision,
         policyCode=code,
         reason=reason,
-        timestamp="2026-09-30T18:00:00Z",
+        timestamp=_iso(DEMO_NOW),
     )
     repo.save_policy_decision(record)
-    return {"allowed": allowed, "decision": decision, "policyCode": code, "reason": reason}
+    return {
+        "allowed": allowed,
+        "decision": decision,
+        "policyCode": code,
+        "reason": reason,
+        "safeAlternative": safe_alternative(body.action),
+    }
 
 
 @app.post("/api/context-passports", status_code=status.HTTP_201_CREATED)
@@ -238,14 +263,14 @@ def create_passport(body: PassportBody):
         "journeyProgress": [s.key for s in journey_obj.steps if s.status == "done"] if journey_obj else [],
         "unresolvedQuestions": repo.seed.unresolvedQuestions if isinstance(repo, MockRepository) else [],
     }
-    created = datetime(2026, 9, 30, 18, 0, tzinfo=timezone.utc)
+    created = DEMO_NOW
     passport = ContextPassport(
         id="pass_001",
         customerId=body.customerId,
         purpose=body.purpose,
         fields={k: values[k] for k in body.selectedFields},
-        createdAt=created.isoformat().replace("+00:00", "Z"),
-        expiresAt=(created + timedelta(hours=body.ttlHours)).isoformat().replace("+00:00", "Z"),
+        createdAt=_iso(created),
+        expiresAt=_iso(created + timedelta(hours=body.ttlHours)),
     )
     repo.save_passport(passport)
     return {"passport": passport.model_dump()}
@@ -256,4 +281,7 @@ def get_passport(passport_id: str):
     item = get_repository().get_passport(passport_id)
     if not item:
         error(404, "PASSPORT_NOT_FOUND", "Context Passport not found")
+    expires = datetime.fromisoformat(item.expiresAt.replace("Z", "+00:00"))
+    if item.revokedAt or expires <= DEMO_NOW:
+        error(410, "PASSPORT_EXPIRED", "Context Passport expired or was revoked")
     return {"passport": item.model_dump()}
