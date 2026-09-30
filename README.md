@@ -97,7 +97,7 @@ Full diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Tech stack
 
-- **Frontend:** Next.js + TypeScript + Tailwind; Framer Motion only where stable.
+- **Frontend:** Next.js + React + Tailwind.
 - **Backend:** FastAPI, one monolithic app.
 - **Persistence:** start in-memory/JSON for deterministic demo replay; add SQLite/Postgres only if persistence becomes necessary.
 - **AI:** optional hosted LLM for explanations/summaries only.
@@ -120,7 +120,8 @@ Full diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - [Privacy & Safety](docs/PRIVACY_AND_SAFETY.md)
 - [Development Plan](docs/DEVELOPMENT_PLAN.md)
 - [Decision Log](docs/DECISIONS.md)
-- [Mock Data](docs/MOCK_DATA.md)\n- [Scalability](docs/SCALABILITY.md)
+- [Mock Data](docs/MOCK_DATA.md)
+- [Scalability](docs/SCALABILITY.md)
 - Source research: [preplexity research.md](preplexity%20research.md)
 
 Legacy concept docs (`KBC_MOMENTOS.md`, `PROJECT_CONTEXT.md`) remain for history, but this README + `docs/` define the current product scope.
@@ -140,26 +141,184 @@ Legacy concept docs (`KBC_MOMENTOS.md`, `PROJECT_CONTEXT.md`) remain for history
 │   ├── tests/
 │   ├── Makefile
 │   └── requirements.txt
+├── frontend/
+│   ├── app/
+│   ├── lib/
+│   ├── next.config.mjs
+│   ├── package.json
+│   └── pnpm-lock.yaml
 ├── docs/
-│   ├── MOCK_DATA.md
-│   └── ...
-└── legacy/research context files
+└── performance/
 ```
 
-## Local development
+## Running locally
 
-The first executable backend slice is the deterministic mock/demo API.
+### Requirements
+
+- Python 3.10+ recommended
+- Node.js 20+ recommended
+- pnpm
+
+If pnpm is not installed:
+
+```bash
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+### Terminal 1 — Backend
+
+From the repository root:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-export USE_MOCK_DATA=true
-make seed
-make test
-make dev
+python -m venv .venv
 ```
 
-The frontend can integrate against the documented `/api` contract without knowing whether the repository is mocked or real.
+macOS / Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Install dependencies, validate demo data, run tests, then start FastAPI:
+
+```bash
+python -m pip install -r requirements.txt
+export USE_MOCK_DATA=true
+python -m app.seed.validate
+pytest -q
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+On Windows PowerShell use:
+
+```powershell
+$env:USE_MOCK_DATA="true"
+python -m app.seed.validate
+pytest -q
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Backend health check:
+
+```text
+http://127.0.0.1:8000/api/health
+```
+
+FastAPI docs:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### Terminal 2 — Frontend
+
+From the repository root:
+
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+The frontend calls relative `/api` URLs. Next.js rewrites those requests to FastAPI. By default:
+
+```text
+Frontend:    http://localhost:3000
+Backend:     http://127.0.0.1:8000
+API proxy:   /api/* → http://127.0.0.1:8000/api/*
+```
+
+If the backend runs somewhere else, set `BACKEND_URL` before starting Next.js:
+
+macOS / Linux:
+
+```bash
+BACKEND_URL=http://127.0.0.1:8001 pnpm dev
+```
+
+Windows PowerShell:
+
+```powershell
+$env:BACKEND_URL="http://127.0.0.1:8001"
+pnpm dev
+```
+
+### Demo flow
+
+Use this order for the canonical Elise demo:
+
+```text
+Reset
+→ Play next through all five events (or Play all)
+→ Why am I seeing this?
+→ Evaluate proposed action
+→ Yes, help me explore
+→ Complete the budget step
+→ Share with KBC Live
+→ Adviser view
+```
+
+Expected confidence progression:
+
+```text
+0 → 30 → 45 → 63 → 83
+```
+
+The customer-facing state appears after the 60-point activation threshold.
+
+### Troubleshooting
+
+**Port 8000 already in use**
+
+Run FastAPI on another port:
+
+```bash
+python -m uvicorn app.main:app --reload --port 8001
+```
+
+Then start the frontend with:
+
+```bash
+BACKEND_URL=http://127.0.0.1:8001 pnpm dev
+```
+
+**Port 3000 already in use**
+
+Stop the existing process using port 3000 before starting the demo. The repository's frontend script intentionally uses port 3000.
+
+**Frontend shows API errors**
+
+Verify FastAPI first:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+Expected shape:
+
+```json
+{"ok":true,"mockMode":true}
+```
+
+Then verify that `BACKEND_URL` has no incorrect host or port.
+
+**CORS**
+
+Normal local development uses the Next.js rewrite, so browser requests stay on `localhost:3000` and are proxied server-side to FastAPI. FastAPI also permits `http://localhost:3000` and `http://127.0.0.1:3000` by default.
 
 ## Team
 
