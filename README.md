@@ -120,6 +120,7 @@ Full diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - [Privacy & Safety](docs/PRIVACY_AND_SAFETY.md)
 - [Development Plan](docs/DEVELOPMENT_PLAN.md)
 - [Decision Log](docs/DECISIONS.md)
+- [Mock Data](docs/MOCK_DATA.md)
 - Source research: [preplexity research.md](preplexity%20research.md)
 
 Legacy concept docs (`KBC_MOMENTOS.md`, `PROJECT_CONTEXT.md`) remain for history, but this README + `docs/` define the current product scope.
@@ -129,41 +130,36 @@ Legacy concept docs (`KBC_MOMENTOS.md`, `PROJECT_CONTEXT.md`) remain for history
 ```text
 /
 ├── README.md
-├── preplexity research.md
-├── KBC_MOMENTOS.md          # legacy concept context
-├── PROJECT_CONTEXT.md       # legacy project context
-├── TEAM_PLAYBOOK.md
-└── docs/
-    ├── PRODUCT.md
-    ├── MVP.md
-    ├── USER_FLOW.md
-    ├── DEMO_STORY.md
-    ├── ARCHITECTURE.md
-    ├── STATE_ENGINE.md
-    ├── POLICY_ENGINE.md
-    ├── DATA_MODEL.md
-    ├── API_CONTRACT.md
-    ├── FRONTEND_SPEC.md
-    ├── BACKEND_SPEC.md
-    ├── AI_USAGE.md
-    ├── PRIVACY_AND_SAFETY.md
-    ├── DEVELOPMENT_PLAN.md
-    └── DECISIONS.md
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── models/
+│   │   ├── repositories/
+│   │   ├── services/
+│   │   └── seed/elise.json
+│   ├── tests/
+│   ├── Makefile
+│   └── requirements.txt
+├── docs/
+│   ├── MOCK_DATA.md
+│   └── ...
+└── legacy/research context files
 ```
 
 ## Local development
 
-Application code is intentionally not part of this documentation phase yet.
-
-Expected future commands:
+The first executable backend slice is the deterministic mock/demo API.
 
 ```bash
-# frontend
-cd frontend && npm install && npm run dev
-
-# backend
-cd backend && uvicorn app.main:app --reload
+cd backend
+pip install -r requirements.txt
+export USE_MOCK_DATA=true
+make seed
+make test
+make dev
 ```
+
+The frontend can integrate against the documented `/api` contract without knowing whether the repository is mocked or real.
 
 ## Team
 
