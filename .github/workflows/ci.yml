@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Validate demo seed
+        working-directory: backend
+        env:
+          USE_MOCK_DATA: "true"
+        run: python -m app.seed.validate
+
+      - name: Test backend
+        working-directory: backend
+        env:
+          USE_MOCK_DATA: "true"
+        run: python -m pytest -q
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        run: npm install --global pnpm@12.8.1
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Test frontend
+        working-directory: frontend
+        run: pnpm test
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm build
+
+      - name: Check launcher syntax
+        run: bash -n start.sh
+
+      - name: Start backend
+        working-directory: backend
+        env:
+          USE_MOCK_DATA: "true"
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/compass-backend.log 2>&1 &
+          echo $! > /tmp/compass-backend.pid
+
+      - name: Start frontend
+        working-directory: frontend
+        env:
+          BACKEND_URL: http://127.0.0.1:8000
+        run: |
+          pnpm dev > /tmp/compass-frontend.log 2>&1 &
+          echo $! > /tmp/compass-frontend.pid
+
+      - name: Verify frontend-backend integration
+        run: |
+          for i in {1..40}; do
+            curl -fsS http://127.0.0.1:8000/api/health && break
+            sleep 0.5
+          done
+          curl -fsS http://127.0.0.1:8000/api/health
+          for i in {1..40}; do
+            curl -fsS http://localhost:3000/api/health && break
+            sleep 0.5
+          done
+          curl -fsS http://localhost:3000/api/health
+          curl -fsS http://localhost:3000/api/customers | grep -q elise
+
+      - name: Print logs on failure
+        if: failure()
+        run: |
+          echo "=== BACKEND ==="
+          cat /tmp/compass-backend.log 2>/dev/null || true
+          echo "=== FRONTEND ==="
+          cat /tmp/compass-frontend.log 2>/dev/null || true
