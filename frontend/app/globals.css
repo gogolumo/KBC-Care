@@ -1106,3 +1106,18 @@ flex-wrap:wrap}
 animation-duration:.01ms!important;
 transition-duration:.01ms!important}
 }
+
+
+/* Kate — consent-bound AI copilot in Adviser View */
+.adviser-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,390px);gap:20px;align-items:start}
+.kate-card{background:linear-gradient(155deg,#0c3d55,#0a5964);color:#fff;border-radius:16px;padding:24px;box-shadow:0 15px 35px #0b3c521c}
+.kate-head{display:flex;align-items:center;gap:11px;padding-bottom:17px;border-bottom:1px solid #ffffff1f}
+.kate-avatar{width:42px;height:42px;border-radius:13px;background:#78d7ad;color:#083d4d;display:grid;place-items:center}
+.kate-head>div:nth-child(2){flex:1}.kate-head span,.kate-head strong{display:block}.kate-head span{font-size:9px;letter-spacing:.16em;color:#8fe3c1;font-weight:900}.kate-head strong{font-size:13px;margin-top:3px}
+.kate-head i{font-style:normal;font-size:8px;font-weight:900;letter-spacing:.1em;color:#9ae8c8;border:1px solid #ffffff2b;border-radius:20px;padding:5px 7px}
+.kate-scope{display:flex;gap:8px;align-items:flex-start;background:#ffffff0d;border:1px solid #ffffff17;border-radius:9px;padding:10px;margin:16px 0;color:#c8e6e5;font-size:9px;line-height:1.45}.kate-scope svg{flex:0 0 16px;color:#7fddb5}
+.kate-section{padding:14px 0;border-bottom:1px solid #ffffff18}.kate-section small{display:block;color:#7ed9b5;font-size:8px;letter-spacing:.14em;font-weight:900;margin-bottom:7px}.kate-section p,.kate-section blockquote,.kate-section li{font-size:10px;line-height:1.6;color:#e2f0ef}.kate-section p,.kate-section blockquote{margin:0}.kate-section blockquote{padding-left:11px;border-left:2px solid #71d4ad}.kate-section ul{margin:0;padding-left:17px}
+.kate-guardrail{display:flex;gap:8px;align-items:flex-start;margin-top:17px;color:#a9cece;font-size:9px;line-height:1.5}.kate-guardrail svg{flex:0 0 15px;color:#77d8b1}
+.adviser-actions{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:15px;background:#fff;border:1px solid #e1ebec;border-radius:13px;padding:14px 17px}.adviser-actions>div{display:flex;align-items:center;gap:10px;color:#34737a}.adviser-actions strong,.adviser-actions small{display:block}.adviser-actions strong{font-size:11px}.adviser-actions small{font-size:9px;color:#8ba3aa;margin-top:2px}
+@media(max-width:900px){.adviser-workspace{grid-template-columns:1fr}}
+@media(max-width:560px){.adviser-actions{align-items:flex-start;flex-direction:column}}
