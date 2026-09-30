@@ -10,7 +10,7 @@ from app.models.domain import ContextPassport, Customer, CustomerEvent, Customer
 from app.repositories.base import DemoRepository
 from app.services.state_engine import build_state
 
-LOAD_CUSTOMER_RE = re.compile(r"^load_(\\d+)$")
+LOAD_CUSTOMER_RE = re.compile(r"^load_(\d+)$")
 
 
 class MockRepository(DemoRepository):
