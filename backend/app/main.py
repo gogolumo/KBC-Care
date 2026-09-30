@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import os
 from typing import Literal
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -19,13 +20,6 @@ from app.services.policy_engine import evaluate_action, safe_alternative
 from app.services.state_engine import calculate_confidence
 
 app = FastAPI(title="KBC Compass Demo API", version="0.1.0")
-
-# Fixed demo clock: every replay produces byte-identical timestamps.
-DEMO_NOW = datetime(2026, 9, 30, 18, 0, tzinfo=timezone.utc)
-
-
-def _iso(value: datetime) -> str:
-    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 cors_origins = [
     origin.strip()
@@ -65,6 +59,10 @@ def error(status_code: int, code: str, message: str):
     raise HTTPException(status_code=status_code, detail={"error": {"code": code, "message": message, "details": {}}})
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 class CustomerBody(BaseModel):
     customerId: str = "elise"
 
@@ -86,8 +84,7 @@ class PolicyBody(CustomerBody):
 class PassportBody(CustomerBody):
     purpose: str
     selectedFields: list[str] = Field(default_factory=list)
-    # 0 creates an already-expired passport (useful to test the expired UI state).
-    ttlHours: int = Field(default=24, ge=0, le=168)
+    ttlHours: int = Field(default=24, ge=1, le=168)
 
 
 @app.get("/api/health")
@@ -237,7 +234,7 @@ def policy(body: PolicyBody):
     state_obj = repo.get_state(body.customerId)
     allowed, decision, code, reason = evaluate_action(state_obj, body.action)
     record = PolicyDecision(
-        id=f"policy_{body.customerId}_{body.action.lower()}",
+        id=f"policy_{uuid4().hex}",
         customerId=body.customerId,
         stateId=body.stateId,
         action=body.action,
@@ -245,7 +242,7 @@ def policy(body: PolicyBody):
         decision=decision,
         policyCode=code,
         reason=reason,
-        timestamp=_iso(DEMO_NOW),
+        timestamp="2026-09-30T18:00:00Z",
     )
     repo.save_policy_decision(record)
     return {
@@ -272,14 +269,14 @@ def create_passport(body: PassportBody):
         "journeyProgress": [s.key for s in journey_obj.steps if s.status == "done"] if journey_obj else [],
         "unresolvedQuestions": repo.seed.unresolvedQuestions if isinstance(repo, MockRepository) else [],
     }
-    created = DEMO_NOW
+    created = utc_now()
     passport = ContextPassport(
-        id="pass_001",
+        id=f"pass_{uuid4().hex}",
         customerId=body.customerId,
         purpose=body.purpose,
         fields={k: values[k] for k in body.selectedFields},
-        createdAt=_iso(created),
-        expiresAt=_iso(created + timedelta(hours=body.ttlHours)),
+        createdAt=created.isoformat().replace("+00:00", "Z"),
+        expiresAt=(created + timedelta(hours=body.ttlHours)).isoformat().replace("+00:00", "Z"),
     )
     repo.save_passport(passport)
     return {"passport": passport.model_dump()}
@@ -290,7 +287,7 @@ def get_passport(passport_id: str):
     item = get_repository().get_passport(passport_id)
     if not item:
         error(404, "PASSPORT_NOT_FOUND", "Context Passport not found")
-    expires = datetime.fromisoformat(item.expiresAt.replace("Z", "+00:00"))
-    if item.revokedAt or expires <= DEMO_NOW:
-        error(410, "PASSPORT_EXPIRED", "Context Passport expired or was revoked")
+    expires_at = datetime.fromisoformat(item.expiresAt.replace("Z", "+00:00"))
+    if item.revokedAt is not None or expires_at <= utc_now():
+        error(410, "PASSPORT_EXPIRED", "Context Passport expired or revoked")
     return {"passport": item.model_dump()}

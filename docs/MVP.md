@@ -16,7 +16,7 @@ This is the only P0 end-to-end journey.
 6. Confidence is visible.
 7. State has expiry/freshness.
 8. Policy engine blocks unsafe credit action.
-9. Customer can confirm, reject or pause.
+9. Customer can confirm or reject.
 10. Confirmation changes state to `confirmed`.
 11. Home Purchase Journey appears dynamically.
 12. Customer can select/share context.
@@ -70,7 +70,7 @@ Activation threshold: **60**.
 - journey progress animation;
 - Context Passport expiry countdown;
 - replay controls;
-- one additional persona only after P0 is stable.
+- pause control if it remains part of the final visible demo;\n- one additional persona only after P0 is stable.
 
 ## P2
 

@@ -1,0 +1,5 @@
+backend/.venv/
+backend/.deps/
+**/__pycache__/
+.pytest_cache/
+backend/pytest-cache-files-*/
