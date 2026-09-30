@@ -14,6 +14,7 @@ from app.models.domain import ContextPassport, PolicyDecision
 from app.repositories.factory import get_repository, mock_enabled
 from app.repositories.mock import MockRepository
 from app.services.journeys import create_home_journey
+from app.services.explanations import explain_state
 from app.services.policy_engine import evaluate_action, safe_alternative
 from app.services.state_engine import calculate_confidence
 
@@ -161,6 +162,14 @@ def state(customer_id: str):
     if not item:
         error(404, "STATE_NOT_FOUND", "State not found")
     return {"state": item.model_dump()}
+
+
+@app.get("/api/customers/{customer_id}/state/explanation")
+def state_explanation(customer_id: str):
+    item = get_repository().get_state(customer_id)
+    if not item:
+        error(404, "STATE_NOT_FOUND", "State not found")
+    return {"explanation": explain_state(item)}
 
 
 @app.post("/api/states/{state_id}/confirm")
