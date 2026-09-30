@@ -29,12 +29,15 @@ echo "   Region:  $REGION"
 
 gcloud config set project "$PROJECT_ID" >/dev/null
 
-echo "→ Enabling required Google Cloud APIs..."
-gcloud services enable \
+echo "→ Checking required Google Cloud APIs..."
+if ! gcloud services enable \
   run.googleapis.com \
   cloudbuild.googleapis.com \
   artifactregistry.googleapis.com \
-  --project "$PROJECT_ID"
+  --project "$PROJECT_ID"; then
+  echo "⚠️  This account cannot enable Google Cloud APIs."
+  echo "   Continuing in case the Qwiklabs project already has them enabled."
+fi
 
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
 BUILDER_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
