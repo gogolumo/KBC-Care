@@ -1,159 +1,178 @@
-# Hackathon
+# KBC Compass
 
-Private repository for our 3-person hackathon team.
+**KBC Compass is a consent-first Customer State Engine that turns fragmented signals into temporary, explainable customer situations and orchestrates helpful next steps after customer confirmation.**
 
-## Goal
+> Product thesis: **KBC Compass helps KBC understand situations, not just transactions.**
 
-Build the smallest working MVP that demonstrates the core value clearly and impressively.
+## Problem
 
-**Priority:** working demo > wow effect > clear value > polish.
+KBC already has strong digital channels, Kate, proactive personalization and domain journeys such as MyHome. The opportunity is not another assistant. The opportunity is a proposed layer that can connect signals distributed across products and channels into a shared, temporary, customer-visible state.
 
-## Team & Ownership
+We do **not** claim KBC currently lacks internal customer understanding. Public research does not establish that. Compass is positioned as an additive state, consent and explainability layer.
 
-### Bogdan — Product Lead / Orchestrator
+## Solution
 
-Owns:
-- problem definition
-- target user
-- MVP scope
-- feature priority
-- acceptance criteria
-- testing of the full user flow
-- demo script
-- pitch
-- final go / no-go decisions
-
-Bogdan does **not** become the bottleneck for implementation. He defines *what must work* and lets Benjamin and Vlad decide the fastest implementation details inside their areas.
-
-### Benjamin — Tech Lead / Backend
-
-Owns:
-- overall technical architecture
-- backend
-- APIs
-- database
-- AI/model integrations
-- third-party integrations
-- environment variables
-- deployment
-- backend reliability during the demo
-- API contracts consumed by frontend
-
-Primary branch: `benjamin/backend`.
-
-Benjamin's output should always be testable independently with curl/Postman or a small script before frontend integration.
-
-### Vlad — Frontend / UX
-
-Owns:
-- frontend
-- UI/UX
-- user flow implementation
-- loading / empty / error / success states
-- frontend integration with backend
-- demo polish
-- responsive behavior on the demo device
-- visual assets and Figma handoff
-
-Primary branch: `vlad/frontend`.
-
-Vlad should build against mock JSON immediately instead of waiting for backend.
-
-## Decision Rights
-
-- **Product decision:** Bogdan
-- **Backend / architecture decision:** Benjamin
-- **Frontend / UX implementation decision:** Vlad
-- **Cross-stack decision affecting demo:** discuss for max 5 minutes; Bogdan decides if no agreement
-- **Scope cut:** Bogdan can cut any nonessential feature at any time
-
-## Handoff Contract
-
-Bogdan gives:
-- user story
-- expected behavior
-- acceptance criteria
-- priority: P0 / P1 / P2
-
-Benjamin gives Vlad:
-- endpoint
-- method
-- request body
-- response body
-- error shape
-- example JSON
-
-Vlad gives Benjamin:
-- exact frontend payload requirements
-- integration bugs with reproduction steps
-- required response fields only
-
-## Branches
-
-- `main` — must stay demoable.
-- `benjamin/backend` — backend / APIs / AI / database.
-- `vlad/frontend` — frontend / UX / integration.
-
-Use short-lived feature branches only when they clearly reduce conflict.
-
-## Development Loop
-
-```
-DECIDE
-→ SPEC
-→ BUILD
-→ TEST
-→ DEMO
-→ FIX
+```text
+Mortgage simulator
+        +
+MyHome activity
+        +
+Rent pattern change
+        +
+Property document
+        ↓
+KBC Compass
+        ↓
+Possible Home Purchase
+Confidence: 78%
+        ↓
+Customer confirmation
+        ↓
+Personalized Home Journey
+        ↓
+Context Passport
+        ↓
+KBC Live Adviser
 ```
 
-## Sync Every 30–60 Minutes
+The core loop is:
 
-Each person answers:
+**Customer State + Evidence + Consent + Policy + Journey Orchestration**
 
-1. What works right now?
-2. What will work in the next hour?
-3. What is blocking me?
-4. Did any API/interface change?
-5. What can we remove from scope?
+## Core value proposition
 
-Sync should take **5–7 minutes max**.
+Compass separates five things that should never be conflated:
 
-## Merge Rules
+1. **Observed event** — what happened.
+2. **Derived evidence** — what the event may indicate.
+3. **Hypothesis** — a temporary state such as `Possible Home Purchase`.
+4. **Customer confirmation** — the customer becomes the authority on their goal.
+5. **Permitted action** — policy decides what the system may do next.
 
-1. Do not merge broken code into `main`.
-2. Keep changes small and demo-focused.
-3. Do not refactor working code unless it blocks the demo.
-4. Frontend develops against mock JSON before backend is ready.
-5. Backend endpoints are tested independently before frontend integration.
-6. Before risky changes, make sure the current demoable state is committed.
-7. Last hours: P0 demo blockers first; no speculative improvements.
+## MVP scope
 
-## AI Usage
+One end-to-end scenario: **Elise — Home Purchase Journey**.
 
-### Bogdan
-ChatGPT → product decisions, specs, testing, pitch  
-Perplexity/Gemini → research only when external facts can change a decision
+Must work:
+- synthetic event playback;
+- deterministic multi-signal confidence;
+- visible evidence and freshness;
+- policy engine visibly blocking an unsafe mortgage action;
+- confirm / reject / pause controls;
+- dynamic Home Journey after confirmation;
+- customer-approved Context Passport;
+- adviser view that receives selected context, not raw transactions.
 
-### Benjamin
-Cursor/Codex → implementation  
-ChatGPT/Claude → architecture, root-cause debugging, code review only when needed
+See [docs/MVP.md](docs/MVP.md).
 
-### Vlad
-Figma/ChatGPT → UX direction  
-Cursor/Codex → frontend implementation  
-ChatGPT → UX critique and demo-flow review
+## Deliberately not building
 
-## Shared Context
+- real KBC APIs or customer data;
+- universal life-event detection;
+- production ML;
+- credit approval, scoring or underwriting;
+- another Kate/chatbot;
+- a mortgage calculator;
+- a generic recommendation engine;
+- a full CRM/adviser integration.
 
-Keep `PROJECT_CONTEXT.md` updated. It is the shared state for humans and AI tools.
+## Architecture
 
-Detailed execution rules live in `TEAM_PLAYBOOK.md`.
+```text
+Synthetic Events
+      ↓
+State Engine (deterministic)
+      ↓
+Customer State + Evidence + Expiry
+      ↓
+Policy / Consent Gate (deterministic)
+      ↓
+Journey Orchestrator
+      ↓
+Customer UI ── Context Passport ── Adviser UI
+      └──────── optional LLM wording/summaries only
+```
 
-## Demo Rule
+Full diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Before adding any feature, ask:
+## Tech stack
 
-> Will this make the demo noticeably better in the next 1–2 hours?
+- **Frontend:** Next.js + TypeScript + Tailwind; Framer Motion only where stable.
+- **Backend:** FastAPI, one monolithic app.
+- **Persistence:** start in-memory/JSON for deterministic demo replay; add SQLite/Postgres only if persistence becomes necessary.
+- **AI:** optional hosted LLM for explanations/summaries only.
+- **Data:** synthetic only.
 
-If not, cut it.
+## Documentation
+
+- [Product](docs/PRODUCT.md)
+- [MVP Scope](docs/MVP.md)
+- [User Flow](docs/USER_FLOW.md)
+- [90s Demo](docs/DEMO_STORY.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [State Engine](docs/STATE_ENGINE.md)
+- [Policy Engine](docs/POLICY_ENGINE.md)
+- [Data Model](docs/DATA_MODEL.md)
+- [API Contract](docs/API_CONTRACT.md)
+- [Frontend Spec](docs/FRONTEND_SPEC.md)
+- [Backend Spec](docs/BACKEND_SPEC.md)
+- [AI Usage](docs/AI_USAGE.md)
+- [Privacy & Safety](docs/PRIVACY_AND_SAFETY.md)
+- [Development Plan](docs/DEVELOPMENT_PLAN.md)
+- [Decision Log](docs/DECISIONS.md)
+- Source research: [preplexity research.md](preplexity%20research.md)
+
+Legacy concept docs (`KBC_MOMENTOS.md`, `PROJECT_CONTEXT.md`) remain for history, but this README + `docs/` define the current product scope.
+
+## Repository structure
+
+```text
+/
+├── README.md
+├── preplexity research.md
+├── KBC_MOMENTOS.md          # legacy concept context
+├── PROJECT_CONTEXT.md       # legacy project context
+├── TEAM_PLAYBOOK.md
+└── docs/
+    ├── PRODUCT.md
+    ├── MVP.md
+    ├── USER_FLOW.md
+    ├── DEMO_STORY.md
+    ├── ARCHITECTURE.md
+    ├── STATE_ENGINE.md
+    ├── POLICY_ENGINE.md
+    ├── DATA_MODEL.md
+    ├── API_CONTRACT.md
+    ├── FRONTEND_SPEC.md
+    ├── BACKEND_SPEC.md
+    ├── AI_USAGE.md
+    ├── PRIVACY_AND_SAFETY.md
+    ├── DEVELOPMENT_PLAN.md
+    └── DECISIONS.md
+```
+
+## Local development
+
+Application code is intentionally not part of this documentation phase yet.
+
+Expected future commands:
+
+```bash
+# frontend
+cd frontend && npm install && npm run dev
+
+# backend
+cd backend && uvicorn app.main:app --reload
+```
+
+## Team
+
+- **Bogdan — Product Lead / Orchestrator:** scope, synthetic scenario, testing, demo, pitch, integration coordination.
+- **Benjamin — Tech Lead / Backend:** architecture, FastAPI, simulator, state engine, policy engine, API, persistence, deployment.
+- **Vlad — Frontend / UX:** customer/adviser UI, event visualization, state/journey UX, integration, polish.
+
+## Demo concept
+
+The demo proves one thing visually: weak signals become an explainable hypothesis, unsafe automation is blocked, the customer confirms the goal, and only then does KBC Compass orchestrate a useful journey and scoped human handoff.
+
+**Priority:** working demo > wow effect > clear value > polish > technical completeness.
