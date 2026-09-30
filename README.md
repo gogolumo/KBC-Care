@@ -8,6 +8,26 @@ KBC Care is a hackathon proof of concept for a context-aware banking experience 
 
 The demo uses **synthetic data only**.
 
+## 🚀 Live Demo
+
+KBC Care is deployed on Google Cloud Run.
+
+- **Application:** https://kbc-compass-kvd5257laq-ew.a.run.app
+- **Backend API:** https://kbc-compass-api-kvd5257laq-ew.a.run.app
+- **Swagger / API docs:** https://kbc-compass-api-kvd5257laq-ew.a.run.app/docs
+- **Health check:** https://kbc-compass-api-kvd5257laq-ew.a.run.app/api/health
+
+Deployment:
+- Google Cloud Run
+- Region: `europe-west1`
+- Demo mode: synthetic / mock data
+- Frontend: Next.js
+- Backend: FastAPI
+
+The public deployment is a hackathon demo environment using synthetic/mock customer data. No real banking customer data is used.
+
+> The public hackathon deployment runs in a temporary Google Cloud/Qwiklabs environment and may expire after the event.
+
 ## The problem
 
 Banks already observe many useful signals: transactions, simulator usage, product journeys, documents and service interactions.
@@ -21,7 +41,7 @@ Mortgage simulator used
 → show mortgage offer
 ```
 
-KBC Compass separates the steps:
+KBC Care's underlying **Compass** decision concept separates the steps:
 
 ```text
 Multiple weak signals
@@ -44,13 +64,13 @@ Five synthetic events arrive:
 4. Housing payment pattern changed
 5. Property document saved
 
-Compass combines the evidence. The deterministic rule score progresses:
+KBC Care combines the evidence. The deterministic rule score progresses:
 
 ```text
 0 → 30 → 45 → 63 → 83
 ```
 
-At the activation threshold, Compass surfaces:
+At the activation threshold, KBC Care surfaces:
 
 > **We think you may be exploring a home purchase**
 
@@ -59,7 +79,7 @@ Elise can see why the context appeared and choose:
 - **Yes, help me explore**
 - **Not relevant**
 
-Before confirmation, Compass demonstrates an important boundary: a **pre-approved mortgage offer is blocked** by the policy engine. Understanding a situation does not mean the bank has permission to turn an inferred context into a high-impact credit action.
+Before confirmation, KBC Care demonstrates an important boundary: a **pre-approved mortgage offer is blocked** by the policy engine. Understanding a situation does not mean the bank has permission to turn an inferred context into a high-impact credit action.
 
 After Elise confirms, a personalized Home Journey becomes available. If she later speaks with KBC Live, she chooses which context to share through a temporary Context Passport.
 
@@ -69,7 +89,7 @@ A recommendation engine mainly answers:
 
 > What should we show?
 
-Compass first answers:
+KBC Care first answers:
 
 > What situation is supported by the evidence?
 
@@ -166,98 +186,67 @@ npx --yes pnpm@12.8.1 dev
 
 ## Google Cloud Deployment
 
-Google Cloud is **not required for local development or the core demo**. The repository can be demonstrated entirely on a laptop with `make dev` / `bash start.sh`.
-
-For a judge-friendly public URL, the simplest hackathon deployment is a **single Cloud Run service** built from the root `Dockerfile`. The container keeps the same logical architecture:
+Google Cloud is **not required for local development or the core demo**. For a judge-friendly public URL, KBC Care is deployed as two Cloud Run services:
 
 ```text
 Browser
-   ↓
-Next.js frontend (public Cloud Run port)
-   ↓ /api/*
-FastAPI backend (internal port 8000)
-   ↓
-Mock / deterministic state & policy engine
+  ↓
+kbc-compass (Next.js frontend)
+  ↓ /api/*
+kbc-compass-api (FastAPI backend)
+  ↓
+synthetic demo data + deterministic state/policy engine
 ```
 
-This single-service layout is deliberate for the hackathon: it avoids CORS and cross-service configuration, preserves the existing relative `/api/*` contract, and keeps deployment to one public HTTPS URL. It is not presented as the target production architecture.
+Current hackathon deployment:
 
-### Prerequisites
+- Project: `qwiklabs-gcp-04-b5a99cc66fcf`
+- Region: `europe-west1`
+- Frontend service: `kbc-compass`
+- Backend service: `kbc-compass-api`
+- App: https://kbc-compass-kvd5257laq-ew.a.run.app
+- Backend: https://kbc-compass-api-kvd5257laq-ew.a.run.app
+- Swagger: https://kbc-compass-api-kvd5257laq-ew.a.run.app/docs
+- Backend health: https://kbc-compass-api-kvd5257laq-ew.a.run.app/api/health
+- Frontend proxy health: https://kbc-compass-kvd5257laq-ew.a.run.app/api/health
+- Verified response: `{"ok":true,"mockMode":true}`
+- Traffic: 100% routed to the latest deployed revision
 
-Use the temporary Google Cloud project supplied by the hackathon organizers. Sign in interactively; **never copy the temporary password, access tokens, service-account keys, or other credentials into this repository**.
-
-Install the Google Cloud CLI if it is not already available, then:
+Deploy from the repository root:
 
 ```bash
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
-gcloud config set run/region us-central1
+bash scripts/deploy_gcp.sh <PROJECT_ID>
 ```
 
-If the hackathon account already opens an authenticated Cloud Shell, you can run the deployment commands there and skip `gcloud auth login`.
-
-### Deploy
-
-From the repository root:
+One-command Cloud Shell deployment, assuming the Cloud Shell session is already authenticated to an authorized Google Cloud/Qwiklabs account:
 
 ```bash
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
-
-gcloud run deploy kbc-care \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars USE_MOCK_DATA=true \
-  --max-instances=1
+PROJECT_ID="$(gcloud projects list --format='value(projectId)' --limit=1)" && \
+gcloud config set project "$PROJECT_ID" && \
+bash scripts/deploy_gcp.sh "$PROJECT_ID"
 ```
 
-Cloud Run returns a public HTTPS URL when deployment succeeds.
-
-Verify it:
-
-```bash
-SERVICE_URL="$(gcloud run services describe kbc-care --region us-central1 --format='value(status.url)')"
-
-curl "$SERVICE_URL/api/health"
-curl "$SERVICE_URL/api/customers"
-```
-
-Expected health response:
-
-```json
-{"ok":true,"mockMode":true}
-```
-
-Then open `$SERVICE_URL` in a browser and run the same demo flow as locally.
-
-### Why `--max-instances=1` for the hackathon demo?
-
-The MVP intentionally stores mutable demo state in memory. Multiple Cloud Run instances would each have separate state, so requests could observe different demo progress. Limiting the service to one instance keeps the public demo deterministic.
-
-A production deployment should instead use stateless API workers with shared persistence/cache, after which horizontal autoscaling can be enabled safely.
-
-### Cloud deployment boundaries
-
-- The Cloud Run deployment uses synthetic data only.
-- No Google Cloud credentials belong in `.env`, source files, Docker build arguments or Git history.
-- The service may reset demo state after a restart/cold replacement because the MVP state is in memory.
-- The public demo has no production authentication and must not be treated as a real banking system.
-- If the temporary Qwiklabs project blocks Cloud Run, service enablement or public IAM, keep the local demo as the source of truth rather than redesigning the application around lab restrictions.
-
-## Deploy to Google Cloud Run
-
-For a public hackathon URL, use Google Cloud Shell:
-
-```bash
-gcloud config set project qwiklabs-gcp-04-b5a99cc66fcf
-git clone https://github.com/gogolumo/KBC-Care.git
-cd KBC-Care
-bash scripts/deploy_gcp.sh qwiklabs-gcp-04-b5a99cc66fcf
-```
-
-This deploys the FastAPI backend and Next.js frontend as separate Cloud Run services, wires the frontend to the generated backend URL, verifies the integration, and prints the public App URL.
+No passwords, tokens, service-account keys or other credentials belong in this repository.
 
 Full guide: [docs/CLOUD_RUN.md](docs/CLOUD_RUN.md)
+
+> The public hackathon deployment uses a temporary Qwiklabs project, so the URLs may expire after the event.
+
+## Hackathon Demo
+
+Recommended URL for judges:
+
+https://kbc-compass-kvd5257laq-ew.a.run.app
+
+Suggested demo scenario:
+
+1. Open KBC Care.
+2. Run Elise's demo story.
+3. Observe contextual home-purchase guidance.
+4. Confirm the journey.
+5. Share selected context.
+6. Open Adviser View.
+7. Show decision confidence and the Kate assistant.
 
 ## Demo flow
 
@@ -340,7 +329,7 @@ See [docs/SCALABILITY.md](docs/SCALABILITY.md) for measured results, limits and 
 
 **Frontend**
 
-- Next.js 15
+- Next.js 16
 - React 19
 - Tailwind CSS 4
 - pnpm
@@ -396,11 +385,12 @@ curl http://localhost:3000/api/customers
 - [Architecture](docs/ARCHITECTURE.md)
 - [Privacy & safety](docs/PRIVACY_AND_SAFETY.md)
 - [Scalability validation](docs/SCALABILITY.md)
+- [Cloud Run deployment guide](docs/CLOUD_RUN.md)
 
 ## Repository structure
 
 ```text
-hackathon/
+KBC-Care/
 ├── start.sh
 ├── Makefile
 ├── README.md
