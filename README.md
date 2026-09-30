@@ -1,10 +1,10 @@
-# KBC Compass
+# KBC Care
 
-**KBC Compass turns fragmented customer signals into an explainable customer situation, asks the customer to confirm it, and only then turns that context into safe, relevant next steps.**
+**KBC Care turns fragmented customer signals into timely, explainable banking guidance while keeping the customer in control.**
+
+KBC Care is a hackathon proof of concept for a context-aware banking experience that combines multiple weak signals into a temporary customer situation, applies a deterministic policy gate, asks the customer to confirm the context, and only then adapts the experience across digital and adviser channels.
 
 > **Signals → Context → Consent → Policy → Experience**
-
-KBC Compass is a hackathon proof of concept for a shared context and orchestration layer that could sit underneath KBC Mobile, Kate and human adviser channels.
 
 The demo uses **synthetic data only**.
 
@@ -97,8 +97,8 @@ Requirements:
 Clone and start:
 
 ```bash
-git clone https://github.com/gogolumo/hackathon.git
-cd hackathon
+git clone https://github.com/gogolumo/KBC-Care.git
+cd KBC-Care
 make dev
 ```
 
@@ -250,8 +250,8 @@ For a public hackathon URL, use Google Cloud Shell:
 
 ```bash
 gcloud config set project qwiklabs-gcp-04-b5a99cc66fcf
-git clone https://github.com/gogolumo/hackathon.git
-cd hackathon
+git clone https://github.com/gogolumo/KBC-Care.git
+cd KBC-Care
 bash scripts/deploy_gcp.sh qwiklabs-gcp-04-b5a99cc66fcf
 ```
 
@@ -417,6 +417,10 @@ hackathon/
 └── scripts/
 ```
 
+## What is unfinished
+
+KBC Care is a demo-ready hackathon MVP, not a production banking system. The core customer flow, deterministic context engine, policy/consent flow, Home Journey, Context Passport, Adviser View and local demo are implemented. Production authentication, persistent shared storage, real KBC customer/API integrations and production-grade horizontal scaling are intentionally out of scope for this prototype.
+
 ## Hackathon boundaries
 
 This is a prototype, not a production banking system.
@@ -435,4 +439,4 @@ The critical state and policy logic in this MVP is deterministic and auditable. 
 
 ---
 
-**Demo thesis:** KBC Compass combines weak signals into an explainable temporary situation, blocks inappropriate automation, asks the customer to confirm the context, and only then adapts the banking journey.
+**Demo thesis:** KBC Care combines weak signals into an explainable temporary situation, blocks inappropriate automation, asks the customer to confirm the context, and only then adapts the banking journey.
