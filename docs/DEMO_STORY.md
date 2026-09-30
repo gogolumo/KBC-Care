@@ -7,10 +7,10 @@ Judges should understand: **this is a system that turns evolving context into ex
 | Time | Operator | Screen | Narration / intent |
 |---|---|---|---|
 | 0–8s | Select Elise | Generic KBC home | “KBC already sees many useful signals. The hard part is connecting them without pretending certainty.” |
-| 8–24s | Start playback | Live event stream | Salary → mortgage simulation → MyHome visits → rent pattern change → property document. **WOW 1: live stream.** |
-| 24–34s | Let score animate | Compass state card | “These signals create a temporary hypothesis — not a label.” Confidence rises to 83%. **WOW 2.** |
+| 8–24s | Click **Run demo** | What KBC observes | Salary → mortgage simulation → MyHome visits → housing payment change → property document. **WOW 1: multiple weak signals.** |
+| 24–34s | Watch the Context step update | Compass state card | “Compass combines the pattern into a temporary context — not a permanent label.” The rule score rises to 83. **WOW 2.** |
 | 34–44s | Open Why | Evidence modal | “Elise can see exactly why this appeared, and that it expires.” **WOW 3: explainability.** |
-| 44–54s | Evaluate action | Policy panel | Show `Pre-approved mortgage offer → BLOCKED`. “Behavioral inference cannot become a credit decision.” **WOW 4.** |
+| 44–54s | Click **Show policy decision** | Policy panel | Show `Pre-approved mortgage offer → BLOCK`. “Understanding context does not equal permission to automate a credit action.” **WOW 4.** |
 | 54–65s | Click Yes | Customer UI | “The safe next step is simply to ask.” UI transforms after confirmation. **WOW 5.** |
 | 65–75s | Complete step | Home Journey | Budget / property / docs / insurance / KBC Live checklist appears. |
 | 75–84s | Share context | Consent preview | Show exactly what will be shared, 24h expiry. |
@@ -18,7 +18,7 @@ Judges should understand: **this is a system that turns evolving context into ex
 
 ## Closing sentence
 
-> “KBC Compass turns fragmented signals into temporary, explainable customer context — then lets the customer decide when that context becomes useful.”
+> “KBC Compass connects weak signals into explainable customer context, blocks inappropriate automation, and only adapts the experience after the customer confirms what is relevant.”
 
 ## Demo fallback
 
