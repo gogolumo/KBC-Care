@@ -127,3 +127,21 @@ def test_full_flow_can_run_twice_with_step_completion(monkeypatch):
         passport_id = passport.json()["passport"]["id"]
         fetched = client.get(f"/api/context-passports/{passport_id}")
         assert fetched.status_code == 200
+
+
+def test_simulation_status_restores_progress_before_threshold(monkeypatch):
+    monkeypatch.setenv("USE_MOCK_DATA", "true")
+    reset_repo()
+
+    client.post("/api/simulation/events/evt_salary", json={"customerId": "elise"})
+    client.post("/api/simulation/events/evt_mortgage", json={"customerId": "elise"})
+
+    status = client.get("/api/simulation/status", params={"customerId": "elise"})
+    assert status.status_code == 200
+    assert status.json()["confidence"] == 30
+    assert status.json()["state"] is None
+    assert [event["id"] for event in status.json()["events"]] == ["evt_salary", "evt_mortgage"]
+
+    next_event = client.post("/api/simulation/events/evt_myhome", json={"customerId": "elise"})
+    assert next_event.status_code == 200
+    assert next_event.json()["confidence"] == 45
