@@ -1,5 +1,340 @@
 # TEAM PLAYBOOK
 
+# CURRENT HACKATHON STATUS — 2026-09-30
+
+> This section is the shared operational source of truth for Bogdan, Benjamin and Vlad. If an older Issue or legacy document conflicts with this section, follow this section plus the current README/docs/backend implementation.
+
+## Current product source of truth
+
+The active MVP is **KBC Compass**, not the older MomentOS/Emma/Lina concept.
+
+Canonical P0 persona and flow:
+
+```text
+Elise
+↓
+salary_received                    +0
+mortgage_simulation_completed     +30
+myhome_repeated_visits            +15
+rent_pattern_changed              +18
+property_document_saved           +20
+↓
+Compass confidence:
+30 → 45 → 63 → 83
+↓
+Possible Home Purchase
+↓
+Why am I seeing this? / Evidence
+↓
+PRE_APPROVED_MORTGAGE_OFFER
+→ BLOCKED by policy
+↓
+Customer confirms
+↓
+Home Purchase Journey
+↓
+Complete at least one step
+↓
+Share Context
+↓
+Context Passport
+↓
+Adviser View
+```
+
+Final deterministic confidence is **83**.
+
+Do not build Emma/Lina or a second persona until this flow is fully integrated and frozen.
+
+## Git status observed
+
+- Mock/backend PR #5 has been merged to `main`.
+- FastAPI backend and deterministic mock data are in `main`.
+- `benjamin/backend` and `vlad/frontend` currently have no commits ahead of `main` and are behind the current main branch.
+- A frontend directory is not currently visible in remote `main`.
+
+If Vlad already has a working frontend locally, **pushing it is the first integration blocker**. Do not rebuild it from scratch just because it is not yet visible remotely.
+
+## Immediate team objective
+
+Stop adding new features.
+
+The next milestone is one stable, repeatable end-to-end demo using the real frontend ↔ backend API connection.
+
+Priority:
+
+```text
+working integrated demo
+>
+repeatable reset
+>
+correct API integration
+>
+clear visual story
+>
+demo reliability
+>
+polish
+>
+new features
+```
+
+## P0 action plan
+
+### 1. Freeze one source of truth
+
+Use:
+
+- `README.md`
+- `docs/MVP.md`
+- `docs/API_CONTRACT.md`
+- `docs/DEMO_STORY.md`
+- `docs/MOCK_DATA.md`
+- current backend implementation
+
+as the active product definition.
+
+Old Issues mentioning MomentOS, Emma, Lina or conflicting scoring are historical unless explicitly rewritten.
+
+Known doc mismatch to fix: any remaining `78%`/old scoring references should match the deterministic **83** flow.
+
+### 2. Vlad — push and stabilize frontend
+
+Immediate tasks:
+
+- push the working frontend to GitHub;
+- place it in the agreed project structure, preferably `frontend/`;
+- open a PR or coordinate a safe merge;
+- keep existing working UI — do not rewrite it unnecessarily;
+- identify all local hardcoded mocks;
+- route UI through a single API/service layer;
+- add the correct environment variable for backend base URL;
+- keep loading/error/empty states stable.
+
+Frontend must not independently calculate confidence or duplicate backend business logic.
+
+Target architecture:
+
+```text
+component
+↓
+api/service client
+↓
+FastAPI /api
+↓
+repository/services
+```
+
+### 3. Benjamin — integration/backend gaps
+
+Immediate tasks:
+
+- confirm all P0 endpoints against the real frontend;
+- add CORS or dev proxy support if required;
+- keep API response shapes stable;
+- fix only P0 contract gaps used in the demo;
+- verify reset/replay is deterministic;
+- verify reject behavior;
+- verify journey step updates;
+- verify Context Passport behavior;
+- add/fix `pause` only if it is part of the final visible demo;
+- check passport expiry/revocation only to the level required by the final demo.
+
+Do not add a database, microservices, production auth or new integrations unless the demo actually requires them.
+
+### 4. Bogdan — integration QA and demo ownership
+
+Immediate tasks:
+
+- treat the product as a hostile QA tester;
+- test every frontend/backend integration after merge;
+- cut anything not used in the 90-second flow;
+- ensure the demo is understandable from 2–3 metres away;
+- lock the exact click order;
+- lock the spoken narration;
+- prepare fallback screenshots/video only after the live path works.
+
+## Required end-to-end acceptance test
+
+### Reset
+
+Expected:
+
+- no applied events;
+- no inferred state card;
+- no journey;
+- no passport.
+
+### Playback
+
+Run events in order:
+
+1. `salary_received`
+2. `mortgage_simulation_completed`
+3. `myhome_repeated_visits`
+4. `rent_pattern_changed`
+5. `property_document_saved`
+
+Visible confidence progression:
+
+```text
+30 → 45 → 63 → 83
+```
+
+The proactive state card should appear only after the configured threshold is crossed.
+
+### Explainability
+
+Open **Why am I seeing this?**
+
+Show:
+
+- evidence;
+- evidence labels;
+- contribution weights;
+- freshness/expiry;
+- observed vs inferred distinction.
+
+### Policy moment
+
+Evaluate:
+
+```text
+PRE_APPROVED_MORTGAGE_OFFER
+```
+
+Expected:
+
+```text
+BLOCK
+HIGH_IMPACT_CREDIT_DECISION
+```
+
+The UI must visibly communicate why the action is blocked.
+
+### Confirmation
+
+Customer confirms the hypothesis.
+
+Expected:
+
+- state becomes `confirmed`;
+- Home Purchase Journey appears.
+
+### Journey
+
+- show all 5 steps;
+- complete at least 1 step using backend API;
+- UI updates from backend response.
+
+### Context Passport
+
+Share only:
+
+- confirmed goal;
+- journey progress;
+- unresolved questions;
+- purpose;
+- expiry.
+
+Do **not** expose raw transaction/event history to adviser view.
+
+### Adviser View
+
+Adviser sees only the customer-approved Context Passport.
+
+### Negative path
+
+After reset and replay:
+
+- click `Not relevant`;
+- backend state becomes rejected;
+- state UI visibly changes/disappears;
+- journey is not created.
+
+## Reliability gate
+
+Before visual polish, the team must successfully run:
+
+```text
+reset
+→ full flow
+→ reset
+→ full flow
+```
+
+two times in a row without:
+
+- manual database edits;
+- editing JSON;
+- DevTools fixes;
+- restarting to repair state;
+- changing code between runs.
+
+When this passes, freeze that commit as the fallback demo.
+
+## One-command startup target
+
+Aim for one top-level command such as:
+
+```bash
+make demo
+```
+
+or an equally simple command appropriate to the final frontend stack.
+
+It should start:
+
+- backend with mock mode enabled;
+- frontend with the correct API base URL.
+
+Do not add Docker purely for appearance if it reduces reliability.
+
+## Final demo checklist
+
+```text
+[ ] Frontend pushed to GitHub
+[ ] Frontend and backend both start from fresh clone
+[ ] Reset works
+[ ] Event playback works
+[ ] Confidence 30 → 45 → 63 → 83
+[ ] State appears at threshold
+[ ] Evidence panel works
+[ ] Policy BLOCK is visible
+[ ] Confirm works
+[ ] Journey appears
+[ ] Journey step completion works
+[ ] Context Passport works
+[ ] Adviser View works
+[ ] Reject flow works
+[ ] Second clean replay works
+[ ] One-command/demo startup documented
+[ ] Stable commit tagged mentally/operationally as fallback
+```
+
+## Hard cut list until freeze
+
+Do not spend hackathon time on:
+
+- new personas;
+- Emma/Lina expansion;
+- production authentication;
+- real KBC APIs;
+- database platform work;
+- microservices;
+- autonomous agents;
+- complex LLM orchestration;
+- large refactors;
+- secondary screens;
+- design-system work;
+- animations that risk stability.
+
+The rule is simple:
+
+**Do not expand the MVP. Turn what already exists into a stable, integrated, impressive demo.**
+
+---
+
 ## Mission
 
 Three people, one goal: get to a working, impressive end-to-end demo as fast as possible.
