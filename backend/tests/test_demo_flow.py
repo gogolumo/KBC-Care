@@ -55,3 +55,11 @@ def test_replay_rejects_duplicate_event(monkeypatch):
     reset_repo()
     assert client.post("/api/simulation/events/evt_salary", json={"customerId": "elise"}).status_code == 200
     assert client.post("/api/simulation/events/evt_salary", json={"customerId": "elise"}).status_code == 409
+
+
+def test_error_shape_matches_contract(monkeypatch):
+    monkeypatch.setenv("USE_MOCK_DATA", "true")
+    reset_repo()
+    response = client.get("/api/customers/elise/state")
+    assert response.status_code == 404
+    assert response.json() == {"error": {"code": "STATE_NOT_FOUND", "message": "State not found", "details": {}}}
