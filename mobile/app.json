@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "KBC Care",
+    "slug": "kbc-care-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f5f6f7",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hackathon.kbccare"
+    },
+    "android": {
+      "package": "com.hackathon.kbccare",
+      "adaptiveIcon": {
+        "backgroundColor": "#0066a1",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
