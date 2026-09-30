@@ -63,7 +63,7 @@ export default function Page() {
   async function share(){if(!selectedFields.length)return;await act(async()=>{const r=await api.createPassport({customerId:CUSTOMER_ID,purpose:'kbc_live_home_exploration',selectedFields,ttlHours:24});sessionStorage.setItem('compass-passport',r.passport.id);setPassport(r.passport);setModal(null);setMessage('Your selected context is ready for KBC Live.')})}
   async function openAdviser(){if(!passport)return;await act(async()=>{const r=await api.getPassport(passport.id);setPassport(r.passport);setView('adviser')})}
 
-  if(view==='adviser') return <Adviser passport={passport} onBack={()=>setView('customer')}/>;
+  if(view==='adviser') return <Adviser passport={passport} confidence={confidence} signalCount={events.length} onBack={()=>setView('customer')}/>;
 
   return <div className="app">
     <header className="kbc-header">
@@ -122,13 +122,14 @@ export default function Page() {
 
 function SheetClose({onClose}){return <button className="sheet-close" onClick={onClose} aria-label="Close"><Icon name="close"/></button>}
 
-function Adviser({passport,onBack}){
+function Adviser({passport,confidence=0,signalCount=0,onBack}){
   const fields=passport?.fields||{}, completed=Array.isArray(fields.journeyProgress)?fields.journeyProgress:[];
   return <div className="adviser-page"><header className="adviser-header"><div className="kbc-logo"><span>KBC</span><b>Care</b></div><div><span>Adviser workspace</span><div className="avatar">KL</div></div></header>
     <main className="adviser-content"><button className="back-link" onClick={onBack}>← Back to customer view</button><div className="adviser-title"><div><span className="overline">CUSTOMER CONTEXT</span><h1>Elise</h1><p>Home exploration · customer-approved context</p></div><span className="consent"><Icon name="shield" size={16}/> Consent active</span></div>
     <div className="adviser-grid"><section className="adviser-main">
       <div className="adviser-section"><h2>Current situation</h2><div className="situation"><div className="care-icon"><Icon name="home"/></div><div><strong>Exploring a home purchase</strong><p>Elise confirmed this goal and chose to share it for this conversation.</p></div></div></div>
       <div className="adviser-section"><h2>What Elise shared</h2>{Object.entries(fields).map(([key,value])=><div className="shared-row" key={key}><span>{SHARE_FIELDS.find(([f])=>f===key)?.[1]||key}</span><strong>{Array.isArray(value)?(value.length?value.join(' · '):'None shared'):value}</strong></div>)}</div>
+      <div className="adviser-section"><h2>Decision confidence</h2><div className="confidence-card"><div className="confidence-head"><strong>Home purchase intent</strong><span>{confidence}% · {confidence>=80?'High':confidence>=60?'Medium':'Low'} confidence</span></div><div className="confidence-track" aria-label={`Decision confidence ${confidence}%`}><div className="confidence-fill" style={{width:`${Math.max(0,Math.min(confidence,100))}%`}} /></div><p>Based on {signalCount} relevant customer signal{signalCount===1?'':'s'}.</p></div></div>
       <div className="adviser-section"><h2>Recommended approach</h2><div className="approach"><strong>Continue from where Elise left off</strong><p>{completed.length?completed.length+' journey step(s) completed. Ask what she would like to cover next.':'Start by clarifying what Elise wants to understand before discussing products.'}</p></div></div>
     </section>
     <aside className="adviser-side"><div className="kate-adviser"><div className="kate-title"><span><Icon name="spark"/></span><div><small>KATE</small><strong>Conversation assistant</strong></div></div><p className="scope"><Icon name="lock" size={15}/> Uses only customer-approved context.</p><div className="brief"><small>SUGGESTED OPENING</small><blockquote>“Hi Elise. I can see you’re exploring a home purchase. Where would you like to pick up today?”</blockquote></div><div className="brief"><small>NEXT STEP</small><p>Focus on guidance first. Let Elise choose when she wants to discuss a product.</p></div><div className="guardrail">Kate can prepare the conversation. The adviser remains responsible for every action.</div></div>
