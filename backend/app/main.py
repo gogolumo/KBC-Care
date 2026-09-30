@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import os
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -12,8 +14,25 @@ from app.repositories.factory import get_repository, mock_enabled
 from app.repositories.mock import MockRepository
 from app.services.journeys import create_home_journey
 from app.services.policy_engine import evaluate_action
+from app.services.state_engine import calculate_confidence
 
 app = FastAPI(title="KBC Compass Demo API", version="0.1.0")
+
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(HTTPException)
@@ -76,7 +95,7 @@ def reset(body: CustomerBody):
         repo.reset(body.customerId)
     except KeyError:
         error(404, "CUSTOMER_NOT_FOUND", "Customer not found")
-    return {"ok": True, "customerId": body.customerId, "state": None, "events": []}
+    return {"ok": True, "customerId": body.customerId, "confidence": 0, "state": None, "events": []}
 
 
 @app.post("/api/simulation/events/{event_id}")
@@ -90,7 +109,12 @@ def inject_event(event_id: str, body: CustomerBody = CustomerBody()):
     except ValueError:
         error(409, "EVENT_ALREADY_APPLIED", "Event already applied")
     state_obj = repo.get_state(body.customerId)
-    return {"event": {"id": event.id, "type": event.type}, "state": state_obj.model_dump() if state_obj else None}
+    confidence = calculate_confidence(repo.applied_events(body.customerId))
+    return {
+        "event": {"id": event.id, "type": event.type},
+        "confidence": confidence,
+        "state": state_obj.model_dump() if state_obj else None,
+    }
 
 
 @app.post("/api/simulation/play")
@@ -103,7 +127,8 @@ def play(body: PlayBody):
             repo.apply_event(body.customerId, event.id)
             applied.append(event.model_dump())
     state_obj = repo.get_state(body.customerId)
-    return {"events": applied, "state": state_obj.model_dump() if state_obj else None}
+    confidence = calculate_confidence(repo.applied_events(body.customerId))
+    return {"events": applied, "confidence": confidence, "state": state_obj.model_dump() if state_obj else None}
 
 
 @app.get("/api/customers/{customer_id}/state")
