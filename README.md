@@ -120,7 +120,7 @@ Full diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - [Privacy & Safety](docs/PRIVACY_AND_SAFETY.md)
 - [Development Plan](docs/DEVELOPMENT_PLAN.md)
 - [Decision Log](docs/DECISIONS.md)
-- [Mock Data](docs/MOCK_DATA.md)
+- [Mock Data](docs/MOCK_DATA.md)\n- [Scalability](docs/SCALABILITY.md)
 - Source research: [preplexity research.md](preplexity%20research.md)
 
 Legacy concept docs (`KBC_MOMENTOS.md`, `PROJECT_CONTEXT.md`) remain for history, but this README + `docs/` define the current product scope.
