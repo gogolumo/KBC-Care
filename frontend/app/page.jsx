@@ -50,18 +50,18 @@ export default function Page() {
     async function restore() {
       try {
         await api.getCustomers();
-        const result = await api.getState(CUSTOMER_ID);
+        const result = await api.getSimulationStatus(CUSTOMER_ID);
         if (!active) return;
+        setState(result.state);
+        setConfidence(result.confidence);
+        const appliedIds = new Set((result.events || []).map(item => item.id));
+        setEvents(DEMO_EVENTS.filter(event => appliedIds.has(event.id)));
         if (!result.state) {
-          await api.reset({ customerId: CUSTOMER_ID });
+          setJourney(null);
+          setPassport(null);
           sessionStorage.removeItem('compass-passport');
-          if (active) { setState(null); setConfidence(0); setEvents([]); setJourney(null); setPassport(null); }
           return;
         }
-        setState(result.state);
-        setConfidence(result.state.confidence);
-        const appliedIds = new Set(['evt_salary', ...(result.state.evidence || []).map(item => item.eventId)]);
-        setEvents(DEMO_EVENTS.filter(event => appliedIds.has(event.id)));
         if (result.state?.status === 'confirmed') {
           const response = await api.getJourney(CUSTOMER_ID);
           if (active) setJourney(response.journey);
