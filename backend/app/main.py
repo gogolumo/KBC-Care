@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.models.domain import ContextPassport, PolicyDecision
@@ -13,6 +14,13 @@ from app.services.journeys import create_home_journey
 from app.services.policy_engine import evaluate_action
 
 app = FastAPI(title="KBC Compass Demo API", version="0.1.0")
+
+
+@app.exception_handler(HTTPException)
+def http_error_handler(request: Request, exc: HTTPException):
+    if isinstance(exc.detail, dict) and "error" in exc.detail:
+        return JSONResponse(status_code=exc.status_code, content=exc.detail)
+    return JSONResponse(status_code=exc.status_code, content={"error": {"code": "HTTP_ERROR", "message": str(exc.detail), "details": {}}})
 
 
 def error(status_code: int, code: str, message: str):
