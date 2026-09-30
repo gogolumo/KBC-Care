@@ -18,6 +18,7 @@ const post = (path, body) => request(path, { method: 'POST', body: JSON.stringif
 export const api = {
   getCustomers: () => request('/customers'),
   reset: body => post('/simulation/reset', body),
+  getSimulationStatus: id => request(`/simulation/status?customerId=${encodeURIComponent(id)}`),
   playEvent: eventId => post(`/simulation/events/${encodeURIComponent(eventId)}`, { customerId: 'elise' }),
   getState: async id => {
     try { return await request(`/customers/${encodeURIComponent(id)}/state`); }

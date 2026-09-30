@@ -37,6 +37,24 @@ Response:
 {"ok":true,"customerId":"elise","confidence":0,"state":null,"events":[]}
 ```
 
+### GET /simulation/status?customerId=elise
+Read the current deterministic demo progress without mutating it.
+
+Response:
+```json
+{
+  "customerId": "elise",
+  "confidence": 30,
+  "state": null,
+  "events": [
+    {"id": "evt_salary", "type": "salary_received"},
+    {"id": "evt_mortgage", "type": "mortgage_simulation_completed"}
+  ]
+}
+```
+
+The frontend uses this endpoint on load/refresh so partial event playback is restored instead of resetting the backend.
+
 ### POST /simulation/events/:eventId
 Inject one predefined event.
 
