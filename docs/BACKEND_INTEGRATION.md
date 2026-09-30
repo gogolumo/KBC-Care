@@ -20,7 +20,7 @@ python -m scripts.golden_path --base-url http://127.0.0.1:8000 --quiet   # relia
 - **CORS:** `localhost:3000` and `127.0.0.1:3000` are allowed. Other origin (e.g. Vite `5173`) → set
   `CORS_ORIGINS=http://localhost:3000,http://localhost:5173` before starting uvicorn.
 - **State is in memory.** Restarting uvicorn = clean state. `POST /simulation/reset` does the same without restart.
-- **Deterministic:** fixed IDs and timestamps. Same calls → byte-identical JSON. Safe to snapshot in mocks.
+- **Deterministic:** same calls → same JSON, except Context Passport `id` (unique `pass_<hex>`) and its `createdAt`/`expiresAt` (real clock). Never hardcode a passport id — use the one returned by `POST /context-passports`.
 
 ## 2. Golden demo: customer `elise`
 
@@ -37,7 +37,7 @@ Call order (matches `docs/USER_FLOW.md`):
 | 7 | "Yes, help me explore" | `POST /states/state_home/confirm` | `status: confirmed`, `journeyId` |
 | 8 | Home Journey | `GET /customers/elise/journey` → `POST /journeys/journey_home/steps/budget/complete` | 5 steps |
 | 9 | Share modal | `POST /context-passports` | 201 |
-| 10 | Adviser view | `GET /context-passports/pass_001` | 200 |
+| 10 | Adviser view | `GET /context-passports/{passport.id from step 9}` | 200 |
 
 Rejection path: step 7 → `POST /states/state_home/reject` → journey stays 404, proactive policy returns `STATE_NOT_ACTIVE`.
 
@@ -224,7 +224,7 @@ Response **201**:
 ```json
 {
   "passport": {
-    "id": "pass_001",
+    "id": "pass_3f9c2a7e5b1d4c8e9a0b6d2f1e4c7a95",
     "customerId": "elise",
     "purpose": "kbc_live_home_exploration",
     "fields": {
@@ -232,16 +232,16 @@ Response **201**:
       "journeyProgress": ["understand_budget"],
       "unresolvedQuestions": ["Which documents should I prepare before speaking to an adviser?", "How much buffer should I keep after purchase costs?"]
     },
-    "createdAt": "2026-09-30T18:00:00Z",
-    "expiresAt": "2026-10-01T18:00:00Z",
+    "createdAt": "2026-09-30T20:15:42.118431Z",
+    "expiresAt": "2026-10-01T20:15:42.118431Z",
     "revokedAt": null
   }
 }
 ```
 - Allowed `selectedFields`: `confirmedGoal`, `journeyProgress`, `unresolvedQuestions`. Only selected ones are returned.
-- `ttlHours` 0–168. `ttlHours: 0` creates an already-expired passport → use it to build the **expired** UI state.
+- `ttlHours` 1–168 (outside → 422 `VALIDATION_ERROR`). `id`, `createdAt`, `expiresAt` differ on every call (example values above).
 
-### `GET /context-passports/pass_001` (Adviser view)
+### `GET /context-passports/{id}` (Adviser view)
 200 → same `{"passport": {...}}` as above. Expired → 410 `PASSPORT_EXPIRED`.
 
 ## 5. TypeScript types (copy into the frontend)

@@ -41,7 +41,7 @@ STEPS = [
         "selectedFields": ["confirmedGoal", "journeyProgress", "unresolvedQuestions"],
         "ttlHours": 24,
     }, 201),
-    ("GET", "/api/context-passports/pass_001", None, 200),
+    ("GET", "/api/context-passports/{passportId}", None, 200),
 ]
 
 
@@ -55,17 +55,30 @@ def make_client(base_url: str | None):
     return TestClient(app)
 
 
+# Unique per passport / real clock (PR #8) -> excluded from the replay comparison.
+VOLATILE_PASSPORT_FIELDS = {"id", "createdAt", "expiresAt"}
+
+
+def _stable(data):
+    if isinstance(data, dict) and isinstance(data.get("passport"), dict):
+        return {**data, "passport": {k: v for k, v in data["passport"].items() if k not in VOLATILE_PASSPORT_FIELDS}}
+    return data
+
+
 def run_once(client, quiet: bool) -> tuple[int, list]:
-    failures, transcript = 0, []
+    failures, transcript, passport_id = 0, [], None
     for method, path, body, expected in STEPS:
+        path = path.replace("{passportId}", passport_id or "missing")
         response = client.request(method, path, json=body) if body is not None else client.request(method, path)
         data = response.json()
+        if path == "/api/context-passports" and response.status_code == 201:
+            passport_id = data["passport"]["id"]
         ok = response.status_code == expected
         event_id = path.rsplit("/", 1)[-1]
         if ok and event_id in EXPECTED_CONFIDENCE:
             ok = data.get("confidence") == EXPECTED_CONFIDENCE[event_id]
         failures += 0 if ok else 1
-        transcript.append((path, response.status_code, data))
+        transcript.append((path if "context-passports/" not in path else "passport-read", response.status_code, _stable(data)))
         print(f"{'OK ' if ok else 'BAD'} {method} {path} -> {response.status_code} (expected {expected})")
         if not quiet:
             if body is not None:

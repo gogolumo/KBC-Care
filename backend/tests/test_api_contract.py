@@ -104,7 +104,7 @@ def test_passport_rejects_fields_outside_allowlist():
     assert response.json()["error"]["code"] == "INVALID_SCOPE"
 
 
-def test_passport_excludes_raw_events_and_expires():
+def test_passport_excludes_raw_events():
     fresh()
     play_all()
     client.post("/api/states/state_home/confirm", json=ELISE)
@@ -116,19 +116,17 @@ def test_passport_excludes_raw_events_and_expires():
     assert created["fields"]["journeyProgress"] == ["understand_budget"]
     assert "evt_" not in str(created)  # no raw event ids / transactions leak into the passport
     assert client.get(f"/api/context-passports/{created['id']}").status_code == 200
-
-    expired = client.post("/api/context-passports", json={**ELISE, "purpose": "x", "selectedFields": ["confirmedGoal"], "ttlHours": 0}).json()["passport"]
-    response = client.get(f"/api/context-passports/{expired['id']}")
-    assert response.status_code == 410
-    assert response.json()["error"]["code"] == "PASSPORT_EXPIRED"
+    # expiry (410) and ttl bounds are covered in test_guardrails.py (PR #8)
 
 
-def test_replay_is_byte_identical():
+def test_replay_is_identical_except_passport_identity():
+    # Passport ids are unique and timestamps use the real clock (PR #8); everything else must replay identically.
     def run():
         fresh()
         out = [play_all().json()]
         out.append(client.post("/api/policy/evaluate", json={**ELISE, "stateId": "state_home", "action": "PRE_APPROVED_MORTGAGE_OFFER"}).json())
         out.append(client.post("/api/states/state_home/confirm", json=ELISE).json())
-        out.append(client.post("/api/context-passports", json={**ELISE, "purpose": "kbc_live_home_exploration", "selectedFields": ["confirmedGoal"]}).json())
+        passport = client.post("/api/context-passports", json={**ELISE, "purpose": "kbc_live_home_exploration", "selectedFields": ["confirmedGoal"]}).json()["passport"]
+        out.append({k: v for k, v in passport.items() if k not in {"id", "createdAt", "expiresAt"}})
         return out
     assert run() == run()
