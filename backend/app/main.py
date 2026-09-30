@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import os
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -13,7 +15,8 @@ from app.models.domain import ContextPassport, PolicyDecision
 from app.repositories.factory import get_repository, mock_enabled
 from app.repositories.mock import MockRepository
 from app.services.journeys import create_home_journey
-from app.services.policy_engine import evaluate_action
+from app.services.explanations import explain_state
+from app.services.policy_engine import evaluate_action, safe_alternative
 from app.services.state_engine import calculate_confidence
 
 app = FastAPI(title="KBC Compass Demo API", version="0.1.0")
@@ -42,6 +45,16 @@ def http_error_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": {"code": "HTTP_ERROR", "message": str(exc.detail), "details": {}}})
 
 
+@app.exception_handler(RequestValidationError)
+def validation_error_handler(request: Request, exc: RequestValidationError):
+    # Keep the documented {"error": {...}} shape for bad request bodies too (FastAPI default is {"detail": [...]}).
+    errors = [{"loc": list(e.get("loc", [])), "msg": e.get("msg", "")} for e in exc.errors()]
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": "VALIDATION_ERROR", "message": "Request body or parameters are invalid", "details": {"errors": errors}}},
+    )
+
+
 def error(status_code: int, code: str, message: str):
     raise HTTPException(status_code=status_code, detail={"error": {"code": code, "message": message, "details": {}}})
 
@@ -55,7 +68,8 @@ class CustomerBody(BaseModel):
 
 
 class PlayBody(CustomerBody):
-    mode: str = "remaining"
+    # "remaining": apply every not-yet-applied event; "next": apply exactly one.
+    mode: Literal["remaining", "next"] = "remaining"
 
 
 class RejectBody(CustomerBody):
@@ -139,12 +153,16 @@ def inject_event(event_id: str, body: CustomerBody = CustomerBody()):
 @app.post("/api/simulation/play")
 def play(body: PlayBody):
     repo = get_repository()
+    if not repo.customer(body.customerId):
+        error(404, "CUSTOMER_NOT_FOUND", "Customer not found")
     applied_ids = {e.id for e in repo.applied_events(body.customerId)}
     applied = []
     for event in repo.available_events(body.customerId):
         if event.id not in applied_ids:
             repo.apply_event(body.customerId, event.id)
             applied.append(event.model_dump())
+            if body.mode == "next":
+                break
     state_obj = repo.get_state(body.customerId)
     confidence = calculate_confidence(repo.applied_events(body.customerId))
     return {"events": applied, "confidence": confidence, "state": state_obj.model_dump() if state_obj else None}
@@ -158,14 +176,26 @@ def state(customer_id: str):
     return {"state": item.model_dump()}
 
 
+@app.get("/api/customers/{customer_id}/state/explanation")
+def state_explanation(customer_id: str):
+    item = get_repository().get_state(customer_id)
+    if not item:
+        error(404, "STATE_NOT_FOUND", "State not found")
+    return {"explanation": explain_state(item)}
+
+
 @app.post("/api/states/{state_id}/confirm")
 def confirm(state_id: str, body: CustomerBody):
     repo = get_repository()
     item = repo.get_state(body.customerId)
     if not item or item.id != state_id:
         error(404, "STATE_NOT_FOUND", "State not found")
+    existing = repo.get_journey(body.customerId)
     item.status = "confirmed"
     repo.save_state(item)
+    if existing and existing.stateId == item.id:
+        # Idempotent: a double click must not reset journey progress.
+        return {"state": item.model_dump(), "journeyId": existing.id}
     template = repo.seed.journeyTemplate if isinstance(repo, MockRepository) else []
     journey = create_home_journey(body.customerId, item, template)
     repo.save_journey(journey)
@@ -207,6 +237,8 @@ def complete_step(journey_id: str, step_id: str, body: CustomerBody = CustomerBo
             break
     if not found:
         error(404, "JOURNEY_STEP_NOT_FOUND", "Journey step not found")
+    if all(step.status == "done" for step in item.steps):
+        item.status = "completed"
     repo.save_journey(item)
     return {"journey": item.model_dump()}
 
@@ -228,7 +260,13 @@ def policy(body: PolicyBody):
         timestamp="2026-09-30T18:00:00Z",
     )
     repo.save_policy_decision(record)
-    return {"allowed": allowed, "decision": decision, "policyCode": code, "reason": reason}
+    return {
+        "allowed": allowed,
+        "decision": decision,
+        "policyCode": code,
+        "reason": reason,
+        "safeAlternative": safe_alternative(body.action),
+    }
 
 
 @app.post("/api/context-passports", status_code=status.HTTP_201_CREATED)

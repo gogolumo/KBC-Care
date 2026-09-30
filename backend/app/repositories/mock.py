@@ -11,6 +11,8 @@ from app.repositories.base import DemoRepository
 from app.services.state_engine import build_state
 
 LOAD_CUSTOMER_RE = re.compile(r"^load_(\d+)$")
+# Audit trail is demo-only; keep it bounded so load tests cannot grow memory forever.
+POLICY_HISTORY_LIMIT = 1000
 
 
 class MockRepository(DemoRepository):
@@ -23,6 +25,7 @@ class MockRepository(DemoRepository):
         self._journeys: dict[str, Journey] = {}
         self._policy: list[PolicyDecision] = []
         self._passports: dict[str, ContextPassport] = {}
+        self._passport_ids: dict[str, set[str]] = {}
         self.reset(self.seed.customer.id)
 
     def _is_load_customer(self, customer_id: str) -> bool:
@@ -58,7 +61,9 @@ class MockRepository(DemoRepository):
         self._applied[customer_id] = []
         self._states.pop(customer_id, None)
         self._journeys.pop(customer_id, None)
-        self._passports = {k: v for k, v in self._passports.items() if v.customerId != customer_id}
+        # O(1) per reset instead of rebuilding the whole passport map (was O(all passports)).
+        for passport_id in self._passport_ids.pop(customer_id, set()):
+            self._passports.pop(passport_id, None)
 
     def available_events(self, customer_id: str) -> list[CustomerEvent]:
         return deepcopy(self._events_for(customer_id))
@@ -98,6 +103,8 @@ class MockRepository(DemoRepository):
 
     def save_policy_decision(self, decision: PolicyDecision) -> None:
         self._policy.append(deepcopy(decision))
+        if len(self._policy) > POLICY_HISTORY_LIMIT:
+            del self._policy[0]
 
     def save_passport(self, passport: ContextPassport) -> None:
         # Preserve canonical Elise ID while avoiding cross-customer collisions in
@@ -105,6 +112,7 @@ class MockRepository(DemoRepository):
         if passport.customerId != self.seed.customer.id and passport.id == "pass_001":
             passport.id = f"pass_{passport.customerId}"
         self._passports[passport.id] = deepcopy(passport)
+        self._passport_ids.setdefault(passport.customerId, set()).add(passport.id)
 
     def get_passport(self, passport_id: str) -> ContextPassport | None:
         return deepcopy(self._passports.get(passport_id))
