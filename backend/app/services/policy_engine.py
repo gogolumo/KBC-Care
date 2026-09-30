@@ -3,7 +3,8 @@
 Evaluation order (docs/POLICY_ENGINE.md):
 1. categorically prohibited action          -> BLOCK
 2. action shares / expands data scope        -> REQUIRE_CONFIRMATION
-3. state rejected / expired (proactive only) -> BLOCK
+3. customer paused this help (proactive)    -> BLOCK
+   state rejected / expired (proactive only) -> BLOCK
 4. low-risk, reversible action               -> ALLOW
 5. unknown action                            -> BLOCK (deny by default)
 
@@ -41,6 +42,8 @@ def evaluate_action(state: CustomerState | None, action: str) -> tuple[bool, str
             return False, "REQUIRE_CONFIRMATION", "CONFIRMED_STATE_REQUIRED", "Context sharing requires a confirmed customer goal and explicit sharing consent."
         return False, "REQUIRE_CONFIRMATION", "EXPLICIT_SHARE_CONSENT_REQUIRED", "Customer must explicitly confirm the scoped context share."
     if action in PROACTIVE_ACTIONS:
+        if state and state.status == "paused":
+            return False, "BLOCK", "CUSTOMER_PAUSED_HELP", "The customer paused this kind of help; proactive suggestions stay off until they resume it."
         if state and state.status in {"rejected", "expired"}:
             return False, "BLOCK", "STATE_NOT_ACTIVE", "The customer dismissed this situation or it expired, so proactive help is suppressed."
         if action == "ASK_STATE_CONFIRMATION":

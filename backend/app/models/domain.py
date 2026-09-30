@@ -34,7 +34,7 @@ class CustomerState(BaseModel):
     customerId: str
     type: Literal["possible_home_purchase"]
     confidence: int
-    status: Literal["inferred", "confirmed", "rejected", "expired"]
+    status: Literal["inferred", "confirmed", "rejected", "expired", "paused"]
     evidence: list[Evidence] = Field(default_factory=list)
     createdAt: str
     updatedAt: str
