@@ -5,6 +5,7 @@ import os
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -40,6 +41,16 @@ def http_error_handler(request: Request, exc: HTTPException):
     if isinstance(exc.detail, dict) and "error" in exc.detail:
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
     return JSONResponse(status_code=exc.status_code, content={"error": {"code": "HTTP_ERROR", "message": str(exc.detail), "details": {}}})
+
+
+@app.exception_handler(RequestValidationError)
+def validation_error_handler(request: Request, exc: RequestValidationError):
+    # Keep the documented {"error": {...}} shape for bad request bodies too (FastAPI default is {"detail": [...]}).
+    errors = [{"loc": list(e.get("loc", [])), "msg": e.get("msg", "")} for e in exc.errors()]
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": "VALIDATION_ERROR", "message": "Request body or parameters are invalid", "details": {"errors": errors}}},
+    )
 
 
 def error(status_code: int, code: str, message: str):
