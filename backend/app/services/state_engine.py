@@ -42,13 +42,13 @@ def build_state(customer_id: str, events: list[CustomerEvent], previous_status: 
         return None
 
     confidence = calculate_confidence(events)
-    if confidence < 60 and previous_status not in {"confirmed", "rejected"}:
+    if confidence < 60 and previous_status not in {"confirmed", "rejected", "paused"}:
         return None
 
     latest = max(_parse(item.observedAt) for item in evidence)
     created = min(_parse(item.observedAt) for item in evidence)
     expires = latest + timedelta(days=30)
-    status = previous_status if previous_status in {"confirmed", "rejected"} else "inferred"
+    status = previous_status if previous_status in {"confirmed", "rejected", "paused"} else "inferred"
     return CustomerState(
         id="state_home",
         customerId=customer_id,

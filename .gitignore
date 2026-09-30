@@ -12,3 +12,6 @@ backend/pytest-cache-files-*/
 !.env.example
 *.pem
 *.key
+
+# stress-test output
+performance/results/

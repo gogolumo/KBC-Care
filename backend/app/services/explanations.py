@@ -29,6 +29,11 @@ def _template(state: CustomerState) -> dict[str, str]:
             "headline": "Your home purchase journey",
             "body": "You told us you're exploring a home purchase, so we've prepared a step-by-step journey. You stay in control of what is shared with an adviser.",
         }
+    if state.status == "paused":
+        return {
+            "headline": "Home-purchase help is paused",
+            "body": "You paused this kind of help. Nothing is suggested until you turn it back on, and no decision is made about you.",
+        }
     if state.status in {"rejected", "expired"}:
         return {
             "headline": "We won't suggest this for now",

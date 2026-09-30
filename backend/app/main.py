@@ -213,6 +213,33 @@ def reject(state_id: str, body: RejectBody):
     return {"state": item.model_dump(), "cooldownUntil": "2026-10-30T12:00:00Z"}
 
 
+@app.post("/api/states/{state_id}/pause")
+def pause(state_id: str, body: CustomerBody):
+    """'Pause this kind of help': hide the hypothesis and block proactive suggestions (USER_FLOW.md)."""
+    repo = get_repository()
+    item = repo.get_state(body.customerId)
+    if not item or item.id != state_id:
+        error(404, "STATE_NOT_FOUND", "State not found")
+    if item.status not in {"inferred", "paused"}:
+        error(409, "STATE_NOT_PAUSABLE", f"Only an inferred state can be paused (current status: {item.status})")
+    item.status = "paused"
+    repo.save_state(item)
+    return {"state": item.model_dump()}
+
+
+@app.post("/api/states/{state_id}/resume")
+def resume(state_id: str, body: CustomerBody):
+    repo = get_repository()
+    item = repo.get_state(body.customerId)
+    if not item or item.id != state_id:
+        error(404, "STATE_NOT_FOUND", "State not found")
+    if item.status != "paused":
+        error(409, "STATE_NOT_PAUSED", f"State is not paused (current status: {item.status})")
+    item.status = "inferred"
+    repo.save_state(item)
+    return {"state": item.model_dump()}
+
+
 @app.get("/api/customers/{customer_id}/journey")
 def journey(customer_id: str):
     item = get_repository().get_journey(customer_id)

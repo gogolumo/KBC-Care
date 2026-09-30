@@ -115,6 +115,21 @@ Request:
 ```
 Response: rejected state + cooldownUntil.
 
+### POST /states/:id/pause
+"Pause this kind of help". Only an `inferred` state can be paused (pausing twice is a no-op).
+Request:
+```json
+{"customerId":"elise"}
+```
+Response `200`: `{"state": {..., "status": "paused"}}`. While paused: the Compass card is hidden
+(the frontend shows the card only for `inferred`), proactive policy actions return
+`BLOCK` / `CUSTOMER_PAUSED_HELP`, new events keep the state paused. Confirm and reject still work.
+Errors: `404 STATE_NOT_FOUND`, `409 STATE_NOT_PAUSABLE` (confirmed/rejected/expired).
+
+### POST /states/:id/resume
+Request: `{"customerId":"elise"}`. Response `200`: `{"state": {..., "status": "inferred"}}`.
+Errors: `404 STATE_NOT_FOUND`, `409 STATE_NOT_PAUSED`.
+
 ## Journey
 
 ### GET /customers/:id/journey
