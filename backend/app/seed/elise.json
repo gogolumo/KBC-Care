@@ -1,0 +1,18 @@
+{
+  "customer": {"id": "elise", "name": "Elise Vermeer", "personaKey": "home_purchase"},
+  "events": [
+    {"id": "evt_salary", "customerId": "elise", "type": "salary_received", "timestamp": "2026-09-03T07:15:00Z", "source": "core_banking", "metadata": {"amount": 3184.72, "currency": "EUR", "counterpartyLabel": "Northstar Studio NV"}},
+    {"id": "evt_mortgage", "customerId": "elise", "type": "mortgage_simulation_completed", "timestamp": "2026-09-18T19:42:00Z", "source": "simulation", "metadata": {"propertyBudget": 365000, "ownContribution": 62000, "termYears": 25}},
+    {"id": "evt_myhome", "customerId": "elise", "type": "myhome_repeated_visits", "timestamp": "2026-09-23T20:10:00Z", "source": "myhome", "metadata": {"visitsLast14Days": 6, "savedSearchArea": "Antwerp South"}},
+    {"id": "evt_rent", "customerId": "elise", "type": "rent_pattern_changed", "timestamp": "2026-09-27T06:55:00Z", "source": "core_banking", "metadata": {"previousMonthlyAmount": 1125, "currentMonthlyAmount": 1185, "currency": "EUR", "changePercent": 5.33}},
+    {"id": "evt_property_doc", "customerId": "elise", "type": "property_document_saved", "timestamp": "2026-09-30T12:05:00Z", "source": "documents", "metadata": {"documentType": "property_energy_certificate", "propertyCity": "Antwerp"}}
+  ],
+  "journeyTemplate": [
+    {"id": "budget", "key": "understand_budget", "title": "Understand budget", "status": "active", "order": 1},
+    {"id": "property", "key": "explore_property", "title": "Explore property", "status": "todo", "order": 2},
+    {"id": "documents", "key": "prepare_documents", "title": "Prepare documents", "status": "todo", "order": 3},
+    {"id": "insurance", "key": "review_insurance", "title": "Review relevant insurance", "status": "todo", "order": 4},
+    {"id": "live", "key": "book_kbc_live", "title": "Book KBC Live conversation", "status": "todo", "order": 5}
+  ],
+  "unresolvedQuestions": ["Which documents should I prepare before speaking to an adviser?", "How much buffer should I keep after purchase costs?"]
+}
