@@ -104,3 +104,7 @@ Not measured:
 > KBC Compass uses deterministic, inexpensive per-customer state/policy logic and includes a load-test harness that can address a synthetic population of up to two million customer IDs without pre-allocating them. The current hackathon implementation is intentionally single-process/in-memory; production bank scale requires stateless API workers backed by shared persistence and must be validated again on production-like infrastructure.
 
 Do not shorten this to “the current backend supports two million concurrent users.”
+
+## Realistic 1M-customer stress test
+
+Measured results, model and Windows runners: [STRESS_TEST.md](STRESS_TEST.md).
