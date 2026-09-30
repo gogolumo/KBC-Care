@@ -24,7 +24,7 @@ Property document
 KBC Compass
         ↓
 Possible Home Purchase
-Confidence: 78%
+Confidence: 83%
         ↓
 Customer confirmation
         ↓
@@ -58,7 +58,7 @@ Must work:
 - deterministic multi-signal confidence;
 - visible evidence and freshness;
 - policy engine visibly blocking an unsafe mortgage action;
-- confirm / reject / pause controls;
+- confirm / reject controls;
 - dynamic Home Journey after confirmation;
 - customer-approved Context Passport;
 - adviser view that receives selected context, not raw transactions.
