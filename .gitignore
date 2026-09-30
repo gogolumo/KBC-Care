@@ -1,5 +1,14 @@
 backend/.venv/
 backend/.deps/
+frontend/node_modules/
+frontend/.next/
+.runtime/
 **/__pycache__/
 .pytest_cache/
 backend/pytest-cache-files-*/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.pem
+*.key
