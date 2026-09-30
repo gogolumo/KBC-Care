@@ -15,6 +15,10 @@ def _parse(ts: str) -> datetime:
     return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
 
+def calculate_confidence(events: list[CustomerEvent]) -> int:
+    return min(100, sum(WEIGHTS[event.type][0] for event in events if event.type in WEIGHTS))
+
+
 def build_state(customer_id: str, events: list[CustomerEvent], previous_status: str | None = None) -> CustomerState | None:
     evidence: list[Evidence] = []
     for event in events:
@@ -37,7 +41,7 @@ def build_state(customer_id: str, events: list[CustomerEvent], previous_status: 
     if not evidence:
         return None
 
-    confidence = min(100, sum(item.weight for item in evidence if item.active))
+    confidence = calculate_confidence(events)
     if confidence < 60 and previous_status not in {"confirmed", "rejected"}:
         return None
 
