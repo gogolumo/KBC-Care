@@ -14,7 +14,7 @@ https://github.com/gogolumo/hackathon
 
 Before submission:
 
-- [ ] Repository changed to **PUBLIC**
+- [x] Repository changed to **PUBLIC**
 - [ ] Open the repository in a logged-out/incognito browser
 - [ ] README renders correctly
 - [ ] `make dev` or `bash start.sh` tested from a fresh clone
