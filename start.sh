@@ -18,6 +18,7 @@ fail() {
 command -v python3 >/dev/null 2>&1 || fail "Python 3 is required. Install Python 3.10+ and run this command again."
 command -v node >/dev/null 2>&1 || fail "Node.js is required. Install Node.js 20+ and run this command again."
 command -v npm >/dev/null 2>&1 || fail "npm is required with Node.js."
+command -v curl >/dev/null 2>&1 || fail "curl is required for local health checks."
 
 PYTHON_MAJOR_MINOR="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 python3 - <<'PY' || fail "Python 3.10+ is required."
@@ -83,11 +84,17 @@ printf "→ Installing frontend dependencies...\n"
 BACKEND_PID=""
 FRONTEND_PID=""
 
+stop_process_tree() {
+  local pid="$1"
+  if command -v pkill >/dev/null 2>&1; then pkill -TERM -P "$pid" >/dev/null 2>&1 || true; fi
+  kill "$pid" >/dev/null 2>&1 || true
+}
+
 cleanup() {
   trap - EXIT INT TERM
   printf "\n→ Stopping KBC Compass...\n"
-  if [ -n "$FRONTEND_PID" ]; then kill "$FRONTEND_PID" >/dev/null 2>&1 || true; fi
-  if [ -n "$BACKEND_PID" ]; then kill "$BACKEND_PID" >/dev/null 2>&1 || true; fi
+  if [ -n "$FRONTEND_PID" ]; then stop_process_tree "$FRONTEND_PID"; fi
+  if [ -n "$BACKEND_PID" ]; then stop_process_tree "$BACKEND_PID"; fi
   wait >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
