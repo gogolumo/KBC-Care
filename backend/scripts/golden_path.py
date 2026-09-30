@@ -23,6 +23,7 @@ STEPS = [
     ("POST", "/api/simulation/events/evt_salary", {"customerId": "elise"}, 200),
     ("POST", "/api/simulation/events/evt_mortgage", {"customerId": "elise"}, 200),
     ("POST", "/api/simulation/events/evt_myhome", {"customerId": "elise"}, 200),
+    ("GET", "/api/simulation/status?customerId=elise", None, 200),  # frontend's first call (refresh restore)
     ("GET", "/api/customers/elise/state", None, 404),
     ("POST", "/api/simulation/events/evt_rent", {"customerId": "elise"}, 200),
     ("POST", "/api/simulation/events/evt_property_doc", {"customerId": "elise"}, 200),
@@ -77,6 +78,8 @@ def run_once(client, quiet: bool) -> tuple[int, list]:
         event_id = path.rsplit("/", 1)[-1]
         if ok and event_id in EXPECTED_CONFIDENCE:
             ok = data.get("confidence") == EXPECTED_CONFIDENCE[event_id]
+        if ok and path.startswith("/api/simulation/status"):
+            ok = data.get("confidence") == 45 and data.get("state") is None and len(data.get("events", [])) == 3
         failures += 0 if ok else 1
         transcript.append((path if "context-passports/" not in path else "passport-read", response.status_code, _stable(data)))
         print(f"{'OK ' if ok else 'BAD'} {method} {path} -> {response.status_code} (expected {expected})")

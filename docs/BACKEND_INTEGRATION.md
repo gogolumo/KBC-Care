@@ -17,7 +17,8 @@ python -m scripts.golden_path --base-url http://127.0.0.1:8000 --quiet   # relia
 ```
 
 - **Base URL:** `http://127.0.0.1:8000/api`
-- **CORS:** `localhost:3000` and `127.0.0.1:3000` are allowed. Other origin (e.g. Vite `5173`) → set
+- **Frontend:** `frontend/next.config.mjs` proxies `/api/*` to `BACKEND_URL` (default `http://127.0.0.1:8000`), so the browser needs no CORS.
+- **CORS (direct calls only):** `localhost:3000` and `127.0.0.1:3000` are allowed. Other origin (e.g. Vite `5173`) → set
   `CORS_ORIGINS=http://localhost:3000,http://localhost:5173` before starting uvicorn.
 - **State is in memory.** Restarting uvicorn = clean state. `POST /simulation/reset` does the same without restart.
 - **Deterministic:** same calls → same JSON, except Context Passport `id` (unique `pass_<hex>`) and its `createdAt`/`expiresAt` (real clock). Never hardcode a passport id — use the one returned by `POST /context-passports`.
@@ -28,6 +29,7 @@ Call order (matches `docs/USER_FLOW.md`):
 
 | # | UI moment | Call | Expect |
 |---:|---|---|---|
+| 0 | Page load / browser refresh | `GET /simulation/status?customerId=elise` | 200, restores `confidence`, `state`, applied `events` |
 | 1 | Load persona | `GET /customers/elise` | 200 |
 | 2 | Reset | `POST /simulation/reset` | 200, `state: null` |
 | 3 | Play events one by one | `POST /simulation/events/:id` ×5 (or `POST /simulation/play` `{"mode":"next"}`) | top-level `confidence` `0 → 30 → 45 → 63 → 83`; `state` non-null from 63 |
@@ -79,6 +81,14 @@ Event IDs in order: `evt_salary` (+0), `evt_mortgage` (+30), `evt_myhome` (+15),
 ```json
 {"id": "elise", "name": "Elise Vermeer", "personaKey": "home_purchase"}
 ```
+
+### `GET /simulation/status?customerId=elise`
+Read-only. The frontend calls it on load to restore progress after a refresh (no side effects).
+```json
+{"customerId": "elise", "confidence": 45, "state": null,
+ "events": [{"id": "evt_salary", "type": "salary_received"}, {"id": "evt_mortgage", "type": "mortgage_simulation_completed"}, {"id": "evt_myhome", "type": "myhome_repeated_visits"}]}
+```
+404 `CUSTOMER_NOT_FOUND` for an unknown customer.
 
 ### `POST /simulation/reset`
 Request `{"customerId": "elise"}` →
