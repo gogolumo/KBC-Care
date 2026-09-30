@@ -116,6 +116,21 @@ def reset(body: CustomerBody):
     return {"ok": True, "customerId": body.customerId, "confidence": 0, "state": None, "events": []}
 
 
+@app.get("/api/simulation/status")
+def simulation_status(customerId: str = "elise"):
+    repo = get_repository()
+    if not repo.customer(customerId):
+        error(404, "CUSTOMER_NOT_FOUND", "Customer not found")
+    applied = repo.applied_events(customerId)
+    state_obj = repo.get_state(customerId)
+    return {
+        "customerId": customerId,
+        "confidence": calculate_confidence(applied),
+        "state": state_obj.model_dump() if state_obj else None,
+        "events": [{"id": event.id, "type": event.type} for event in applied],
+    }
+
+
 @app.post("/api/simulation/events/{event_id}")
 def inject_event(event_id: str, body: CustomerBody = CustomerBody()):
     repo = get_repository()

@@ -50,18 +50,18 @@ export default function Page() {
     async function restore() {
       try {
         await api.getCustomers();
-        const result = await api.getState(CUSTOMER_ID);
+        const result = await api.getSimulationStatus(CUSTOMER_ID);
         if (!active) return;
+        setState(result.state);
+        setConfidence(result.confidence);
+        const appliedIds = new Set((result.events || []).map(item => item.id));
+        setEvents(DEMO_EVENTS.filter(event => appliedIds.has(event.id)));
         if (!result.state) {
-          await api.reset({ customerId: CUSTOMER_ID });
+          setJourney(null);
+          setPassport(null);
           sessionStorage.removeItem('compass-passport');
-          if (active) { setState(null); setConfidence(0); setEvents([]); setJourney(null); setPassport(null); }
           return;
         }
-        setState(result.state);
-        setConfidence(result.state.confidence);
-        const appliedIds = new Set(['evt_salary', ...(result.state.evidence || []).map(item => item.eventId)]);
-        setEvents(DEMO_EVENTS.filter(event => appliedIds.has(event.id)));
         if (result.state?.status === 'confirmed') {
           const response = await api.getJourney(CUSTOMER_ID);
           if (active) setJourney(response.journey);
@@ -186,7 +186,7 @@ export default function Page() {
               : visibleState ? <section className="state-card"><div className="state-card-top"><span className="card-kicker">A TEMPORARY HYPOTHESIS</span><span className="state-pill">POSSIBLE</span></div><h2>Exploring a home purchase?</h2><p>We noticed a few signals that may be relevant. We may be wrong — only you can tell us.</p><div className="state-score"><strong>{score}%</strong><div><span>Compass confidence</span><small>Based on {state.evidence?.length ?? 0} observed signals · Expires {fmtDate(state.expiresAt)}</small></div></div><div className="score-bar"><span style={{ width: `${score}%` }}/></div><div className="card-buttons"><button className="primary" onClick={confirm} disabled={busy}>Yes, help me explore <Icon name="arrow" size={17}/></button><button className="secondary" onClick={reject} disabled={busy}>Not relevant</button></div><div className="state-links"><button onClick={() => setModal('why')}>Why am I seeing this?</button></div></section>
               : <section className="neutral-card"><div className="neutral-art"><div><Icon name="spark" size={38}/></div></div><div><span className="card-kicker">HERE FOR WHAT MATTERS</span><h2>Banking that moves with you.</h2><p>Explore your everyday finances in one clear place. Useful help appears when you choose it.</p><button className="soft-button" onClick={() => setMessage('Your everyday banking is ready.')}>Explore your banking <Icon name="arrow" size={16}/></button></div></section>}
             {rejected && <div className="dismissed"><Icon name="check" size={18}/><span>Elise marked the home-purchase suggestion as not relevant. It will stay out of this demo.</span></div>}
-            {(visibleState || confirmed) && <section className="policy-card"><div className="section-title"><h2>Trust &amp; policy check</h2><span>Safe help first</span></div><p>Can a possible life moment trigger a pre-approved mortgage offer?</p><button className="outline-button" onClick={evaluatePolicy} disabled={busy}>Evaluate proposed action <Icon name="arrow" size={16}/></button>{policy && <div className="blocked"><span>BLOCKED</span><div><strong>Pre-approved mortgage offer</strong><p>{policy.reason}</p><small>Safe alternative: ask Elise to confirm her goal, then offer educational steps.</small></div></div>}</section>}
+            {(visibleState || confirmed) && <section className="policy-card"><div className="section-title"><h2>Trust &amp; policy check</h2><span>Safe help first</span></div><p>Can a possible life moment trigger a pre-approved mortgage offer?</p><button className="outline-button" onClick={evaluatePolicy} disabled={busy}>Evaluate proposed action <Icon name="arrow" size={16}/></button>{policy && <div className="blocked"><span>{policy.decision}</span><div><strong>Pre-approved mortgage offer</strong><p>{policy.reason}</p><small>Safe alternative: ask Elise to confirm her goal, then offer educational steps.</small></div></div>}</section>}
           </main>
           <aside className="simulation"><div className="sim-head"><div className="sim-icon"><Icon name="pulse" size={19}/></div><div><strong>Compass live</strong><small>Event simulation</small></div><span className="live-tag">LIVE</span></div><div className="sim-body"><div className="sim-label">DEMO CONTROLS</div><div className="controls"><button className="play-next" onClick={playNext} disabled={!nextEvent || busy}>{busy ? 'Processing…' : nextEvent ? `Play next · ${events.length + 1}/5` : 'All events played'} <Icon name="arrow" size={17}/></button><button className="play-all" onClick={playAll} disabled={!nextEvent || busy}>Play all</button></div><button className="reset" onClick={reset} disabled={busy}><Icon name="reset" size={16}/> Reset demo</button><div className="divider"/><div className="sim-label">LIVE EVENT STREAM <span>{events.length}/5</span></div><div className="event-list">{events.length ? events.slice().reverse().map((event, index) => <div className="event" key={event.id}><div className="event-symbol"><Icon name="pulse" size={15}/></div><div><strong>{event.title}</strong><small>{event.source} · {index === 0 ? 'just now' : 'earlier'}</small></div></div>) : <div className="empty-events"><Icon name="clock" size={24}/><strong>Waiting for the first signal</strong><small>Use Play next to begin Elise’s story.</small></div>}</div><div className="divider"/><div className="sim-label">COMPASS STATE</div><div className="confidence-box"><span>{state ? state.status === 'confirmed' ? 'Goal confirmed by Elise' : state.status === 'rejected' ? 'Hypothesis rejected' : score >= 60 ? 'Possible Home Purchase' : 'Below activation threshold' : score > 0 ? 'Below activation threshold' : 'No hypothesis yet'}</span><strong>{score}<small>/ 100</small></strong><div className="score-bar"><span style={{ width: `${score}%` }}/></div><p>{score < 60 ? 'A customer-facing card appears at 60.' : confirmed ? 'Customer confirmation changes the experience.' : rejected ? 'The inference will not reactivate during cooldown.' : 'Several signals now support a temporary hypothesis.'}</p></div><div className="score-steps">{[0, 30, 45, 63, 83].map((number, index) => <div className={index <= events.length ? 'reached' : ''} key={index}><i/><span>{number}</span></div>)}</div><div className="sim-foot">Observed events are synthetic. Compass confidence is a rule score, not a probability.</div></div></aside>
         </div> : <Adviser passport={passport} onBack={() => setView('customer')}/>}
