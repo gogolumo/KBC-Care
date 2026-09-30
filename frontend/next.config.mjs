@@ -1,7 +1,5 @@
-const backendUrl = (process.env.BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-
 export default {
-  async rewrites() {
-    return [{ source: '/api/:path*', destination: `${backendUrl}/api/:path*` }];
-  }
+  // /api/* is proxied at runtime by app/api/[...path]/route.js.
+  // This keeps local development and Cloud Run on the same browser origin
+  // while allowing BACKEND_URL to be configured when the service starts.
 };
