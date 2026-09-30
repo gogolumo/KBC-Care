@@ -36,6 +36,19 @@ gcloud services enable \
   artifactregistry.googleapis.com \
   --project "$PROJECT_ID"
 
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+BUILDER_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+echo "→ Ensuring Cloud Run source-build permission..."
+if ! gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$BUILDER_SA" \
+  --role="roles/run.builder" \
+  --condition=None \
+  --quiet >/dev/null; then
+  echo "⚠️  Could not add roles/run.builder automatically."
+  echo "   If source deployment fails with a build permission error, the Qwiklabs account may not allow IAM changes."
+fi
+
 echo "→ Deploying FastAPI backend..."
 gcloud run deploy "$BACKEND_SERVICE" \
   --source "$ROOT_DIR/backend" \
