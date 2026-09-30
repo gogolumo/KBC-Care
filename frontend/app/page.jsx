@@ -5,233 +5,132 @@ import { api } from '../lib/api.js';
 import { DEMO_EVENTS } from '../lib/demo-events.js';
 
 const CUSTOMER_ID = 'elise';
-const DEMO_SCORES = [0, 30, 45, 63, 83];
 const SHARE_FIELDS = [
   ['confirmedGoal', 'Confirmed goal', 'Exploring a home purchase'],
   ['journeyProgress', 'Journey progress', 'Steps Elise has completed'],
   ['unresolvedQuestions', 'Unresolved questions', 'What Elise wants to ask']
 ];
-const fmtDate = value => value ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value)) : '—';
+const TRANSACTIONS = [
+  ['Delhaize', 'Today', '− € 42.18'],
+  ['NMBS / SNCB', 'Yesterday', '− € 18.40'],
+  ['Salary', '26 Sep', '+ € 2,840.00'],
+  ['Energy bill', '24 Sep', '− € 126.70']
+];
+const fmtDate = value => value ? new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short' }).format(new Date(value)) : '—';
 
-function Icon({ name, size = 20 }) {
+function Icon({ name, size=20 }) {
   const paths = {
-    compass: <><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></>,
-    home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 21v-7h6v7"/></>,
-    pulse: <path d="M2 12h5l3-7 4 14 3-7h5"/>,
-    shield: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></>,
-    arrow: <path d="M5 12h14m-6-6 6 6-6 6"/>,
-    check: <path d="m5 12 4 4L19 6"/>,
-    info: <><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></>,
-    close: <path d="M5 5l14 14M19 5 5 19"/>,
-    reset: <path d="M20 11a8 8 0 1 1-2.3-5.7M20 4v6h-6"/>,
-    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
-    lock: <><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>,
-    user: <><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 15-5 16 0"/></>,
-    spark: <path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/>
+    home:<><path d="m3 10 9-7 9 7v10H4z"/><path d="M9 21v-7h6v7"/></>,
+    card:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></>,
+    transfer:<><path d="M4 8h15m-4-4 4 4-4 4"/><path d="M20 16H5m4-4-4 4 4 4"/></>,
+    user:<><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 15-5 16 0"/></>,
+    arrow:<path d="M5 12h14m-6-6 6 6-6 6"/>,
+    check:<path d="m5 12 4 4L19 6"/>,
+    close:<path d="M5 5l14 14M19 5 5 19"/>,
+    reset:<path d="M20 11a8 8 0 1 1-2.3-5.7M20 4v6h-6"/>,
+    lock:<><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>,
+    shield:<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></>,
+    spark:<path d="m12 3 2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z"/>,
+    menu:<path d="M4 7h16M4 12h16M4 17h16"/>,
+    help:<><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.3 2.3 0 1 1 3.5 2c-.9.5-1.3 1-1.3 2"/><path d="M12 17h.01"/></>
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
 export default function Page() {
-  const [state, setState] = useState(null);
-  const [confidence, setConfidence] = useState(0);
-  const [events, setEvents] = useState([]);
-  const [journey, setJourney] = useState(null);
-  const [policy, setPolicy] = useState(null);
-  const [passport, setPassport] = useState(null);
-  const [view, setView] = useState('customer');
-  const [modal, setModal] = useState(null);
-  const [selectedFields, setSelectedFields] = useState(SHARE_FIELDS.map(([key]) => key));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [state,setState]=useState(null), [confidence,setConfidence]=useState(0), [events,setEvents]=useState([]);
+  const [journey,setJourney]=useState(null), [passport,setPassport]=useState(null), [view,setView]=useState('customer');
+  const [modal,setModal]=useState(null), [selectedFields,setSelectedFields]=useState(SHARE_FIELDS.map(([k])=>k));
+  const [busy,setBusy]=useState(false), [error,setError]=useState(''), [message,setMessage]=useState('');
 
-  useEffect(() => {
-    let active = true;
-    async function restore() {
-      try {
-        await api.getCustomers();
-        const result = await api.getSimulationStatus(CUSTOMER_ID);
-        if (!active) return;
-        setState(result.state);
-        setConfidence(result.confidence);
-        const appliedIds = new Set((result.events || []).map(item => item.id));
-        setEvents(DEMO_EVENTS.filter(event => appliedIds.has(event.id)));
-        if (!result.state) {
-          setJourney(null);
-          setPassport(null);
-          sessionStorage.removeItem('compass-passport');
-          return;
-        }
-        if (result.state?.status === 'confirmed') {
-          const response = await api.getJourney(CUSTOMER_ID);
-          if (active) setJourney(response.journey);
-          const passportId = sessionStorage.getItem('compass-passport');
-          if (passportId) {
-            try { const shared = await api.getPassport(passportId); if (active) setPassport(shared.passport); }
-            catch { sessionStorage.removeItem('compass-passport'); }
-          }
-        }
-      } catch (err) { if (active) setError(err.message); }
+  useEffect(()=>{ let active=true; (async()=>{ try {
+    await api.getCustomers(); const result=await api.getSimulationStatus(CUSTOMER_ID); if(!active)return;
+    setState(result.state); setConfidence(result.confidence);
+    const ids=new Set((result.events||[]).map(x=>x.id)); setEvents(DEMO_EVENTS.filter(e=>ids.has(e.id)));
+    if(result.state?.status==='confirmed'){ const j=await api.getJourney(CUSTOMER_ID); if(active)setJourney(j.journey);
+      const id=sessionStorage.getItem('compass-passport'); if(id) try { const p=await api.getPassport(id); if(active)setPassport(p.passport); } catch { sessionStorage.removeItem('compass-passport'); }
     }
-    restore();
-    return () => { active = false; };
-  }, []);
+  } catch(e){if(active)setError(e.message)} })(); return()=>{active=false}; },[]);
 
-  const score = confidence;
-  const visibleState = Boolean(state && score >= 60 && state.status === 'inferred');
-  const confirmed = state?.status === 'confirmed';
-  const rejected = state?.status === 'rejected';
-  const nextEvent = DEMO_EVENTS[events.length];
+  const visible=Boolean(state&&confidence>=60&&state.status==='inferred'), confirmed=state?.status==='confirmed', nextEvent=DEMO_EVENTS[events.length];
+  async function act(fn){if(busy)return;setBusy(true);setError('');setMessage('');try{await fn()}catch(e){setError(e?.message||'Something went wrong.')}finally{setBusy(false)}}
+  async function playAll(){await act(async()=>{let list=[...events];for(const event of DEMO_EVENTS.slice(events.length)){const r=await api.playEvent(event.id);list=[...list,event];setEvents(list);setConfidence(r.confidence);setState(r.state);if(list.length<DEMO_EVENTS.length)await new Promise(r=>setTimeout(r,350));}})}
+  async function playNext(){if(!nextEvent)return;await act(async()=>{const r=await api.playEvent(nextEvent.id);setEvents([...events,nextEvent]);setConfidence(r.confidence);setState(r.state)})}
+  async function reset(){await act(async()=>{await api.reset({customerId:CUSTOMER_ID});sessionStorage.removeItem('compass-passport');setState(null);setConfidence(0);setEvents([]);setJourney(null);setPassport(null);setView('customer');setModal(null);setMessage('Demo reset.')})}
+  async function confirm(){await act(async()=>{await api.confirm(state.id,{customerId:CUSTOMER_ID});const [s,j]=await Promise.all([api.getState(CUSTOMER_ID),api.getJourney(CUSTOMER_ID)]);setState(s.state);setConfidence(s.state.confidence);setJourney(j.journey);setModal(null);setMessage('Thanks, Elise. Your home journey is ready.')})}
+  async function reject(){await act(async()=>{await api.reject(state.id,{customerId:CUSTOMER_ID,reason:'not_relevant'});const r=await api.getState(CUSTOMER_ID);setState(r.state);setConfidence(r.state.confidence);setModal(null)})}
+  async function completeStep(id){await act(async()=>{const r=await api.completeStep(journey.id,id);setJourney(r.journey)})}
+  async function share(){if(!selectedFields.length)return;await act(async()=>{const r=await api.createPassport({customerId:CUSTOMER_ID,purpose:'kbc_live_home_exploration',selectedFields,ttlHours:24});sessionStorage.setItem('compass-passport',r.passport.id);setPassport(r.passport);setModal(null);setMessage('Your selected context is ready for KBC Live.')})}
+  async function openAdviser(){if(!passport)return;await act(async()=>{const r=await api.getPassport(passport.id);setPassport(r.passport);setView('adviser')})}
 
-  async function act(task) {
-    if (busy) return;
-    setBusy(true); setError(''); setMessage('');
-    try { await task(); }
-    catch (err) { setError(err?.message || 'Something went wrong. Please try again.'); }
-    finally { setBusy(false); }
-  }
+  if(view==='adviser') return <Adviser passport={passport} onBack={()=>setView('customer')}/>;
 
-  async function reset() {
-    await act(async () => {
-      await api.reset({ customerId: CUSTOMER_ID });
-      sessionStorage.removeItem('compass-passport');
-      setState(null); setConfidence(0); setEvents([]); setJourney(null); setPolicy(null); setPassport(null);
-      setModal(null); setView('customer'); setMessage('Demo reset. Elise starts with a neutral banking view.');
-    });
-  }
+  return <div className="app">
+    <header className="kbc-header">
+      <div className="header-inner"><button className="mobile-menu" aria-label="Menu"><Icon name="menu"/></button><div className="kbc-logo"><span>KBC</span><b>Care</b></div>
+      <nav><button className="active">Home</button><button>Payments</button><button>Products</button><button>Support</button></nav>
+      <div className="header-actions"><button aria-label="Help"><Icon name="help"/></button><div className="avatar">EL</div></div></div>
+    </header>
 
-  async function playNext() {
-    if (!nextEvent) return;
-    await act(async () => {
-      const applied = await api.playEvent(nextEvent.id);
-      const updated = [...events, nextEvent];
-      setEvents(updated);
-      setConfidence(applied.confidence); setState(applied.state);
-    });
-  }
+    <main className="banking-page">
+      <div className="welcome"><div><p>Good evening</p><h1>Elise</h1></div><button className="demo-control" onClick={()=>setModal('demo')}>Demo controls</button></div>
+      {error&&<div className="notice error">{error}<button onClick={()=>setError('')}>Close</button></div>}
+      {message&&<div className="notice success"><Icon name="check" size={17}/>{message}</div>}
 
-  async function playAll() {
-    await act(async () => {
-      let updated = [...events];
-      for (const event of DEMO_EVENTS.slice(events.length)) {
-        const applied = await api.playEvent(event.id);
-        updated = [...updated, event];
-        setEvents(updated);
-        setConfidence(applied.confidence); setState(applied.state);
-        if (updated.length < DEMO_EVENTS.length) await new Promise(resolve => setTimeout(resolve, 520));
-      }
-    });
-  }
+      <section className="money-section">
+        <div className="section-heading"><h2>Your money</h2><button>View all</button></div>
+        <div className="accounts">
+          <article className="account primary-account"><div><span>Current account</span><small>BE•• •••• •••• 4829</small></div><strong>€ 12,480.50</strong></article>
+          <article className="account"><div><span>Savings account</span><small>Goal savings</small></div><strong>€ 24,320.00</strong></article>
+        </div>
+      </section>
 
-  async function evaluatePolicy() {
-    await act(async () => setPolicy(await api.evaluatePolicy({ customerId: CUSTOMER_ID, stateId: state.id, action: 'PRE_APPROVED_MORTGAGE_OFFER' })));
-  }
-
-  async function confirm() {
-    await act(async () => {
-      await api.confirm(state.id, { customerId: CUSTOMER_ID });
-      const [nextState, nextJourney] = await Promise.all([api.getState(CUSTOMER_ID), api.getJourney(CUSTOMER_ID)]);
-      setState(nextState.state); setConfidence(nextState.state.confidence); setJourney(nextJourney.journey); setModal(null); setMessage('Elise confirmed her goal. The Home Journey is now available.');
-    });
-  }
-
-  async function reject() {
-    await act(async () => {
-      await api.reject(state.id, { customerId: CUSTOMER_ID, reason: 'not_relevant' });
-      const result = await api.getState(CUSTOMER_ID);
-      setState(result.state); setConfidence(result.state.confidence); setJourney(null); setModal(null); setMessage('Insight dismissed. No Home Journey was created.');
-    });
-  }
-
-  async function completeStep(stepId) {
-    await act(async () => {
-      const result = await api.completeStep(journey.id, stepId);
-      setJourney(result.journey);
-    });
-  }
-
-  async function share() {
-    if (!selectedFields.length) { setError('Choose at least one field to share.'); return; }
-    await act(async () => {
-      const result = await api.createPassport({ customerId: CUSTOMER_ID, purpose: 'kbc_live_home_exploration', selectedFields, ttlHours: 24 });
-      sessionStorage.setItem('compass-passport', result.passport.id);
-      setPassport(result.passport); setModal(null); setMessage('Context Passport created. Open Adviser View to inspect the shared fields.');
-    });
-  }
-
-  async function openAdviser() {
-    if (!passport) return;
-    await act(async () => { const result = await api.getPassport(passport.id); setPassport(result.passport); setView('adviser'); });
-  }
-
-  return <div className="shell">
-    <aside className="sidebar">
-      <div className="brand"><div className="brand-icon"><Icon name="compass" size={23}/></div><div><strong>KBC Compass</strong><span>CONTEXT → CONSENT → ACTION</span></div></div>
-      <div className="side-label">COMPASS EXPERIENCE</div>
-      <button className={`side-nav ${view === 'customer' ? 'active' : ''}`} onClick={() => setView('customer')}><Icon name="home"/> Customer experience</button>
-      <button className={`side-nav ${view === 'adviser' ? 'active' : ''}`} onClick={openAdviser} disabled={!passport}><Icon name="user"/> Adviser view</button>
-      <div className="side-bottom"><span className="status-dot"/><div><strong>Synthetic demo mode</strong><small>FastAPI · no real customer data</small></div></div>
-    </aside>
-    <div className="page">
-      <header className="topbar"><span>Personal banking <b>/</b> {view === 'customer' ? 'Overview' : 'KBC Live adviser'}</span><div><span className="demo-badge">SYNTHETIC DATA</span><div className="avatar">{view === 'customer' ? 'EL' : 'KL'}</div></div></header>
-      <div className="content">
-        <div className="title-row"><div><span className="eyebrow">{view === 'customer' ? 'WELCOME BACK' : 'CUSTOMER-APPROVED CONTEXT'}</span><h1>{view === 'customer' ? 'Good afternoon, Elise' : 'KBC Live handoff'} <span className="title-star">✳</span></h1><p>{view === 'customer' ? 'Compass connects weak signals into a possible situation, asks you to confirm it, then adapts the help you see.' : 'Only the information Elise chose to share is shown here.'}</p></div><div className="persona"><span className="persona-dot"/><div><strong>Elise</strong><small>Home purchase demo</small></div></div></div>
-        {view === 'customer' && <section className="concept-strip" aria-label="How KBC Compass works">
-          <div><span className="concept-number">1</span><div><small>SIGNALS</small><strong>{events.length ? `${events.length} customer signal${events.length === 1 ? '' : 's'}` : 'Waiting for signals'}</strong></div></div>
-          <Icon name="arrow" size={18}/>
-          <div><span className="concept-number">2</span><div><small>CONTEXT</small><strong>{confirmed ? 'Home purchase confirmed' : visibleState ? `Possible home purchase · ${score}%` : score ? `Pattern forming · ${score}/100` : 'No assumption yet'}</strong></div></div>
-          <Icon name="arrow" size={18}/>
-          <div><span className="concept-number">3</span><div><small>SAFE NEXT STEP</small><strong>{confirmed ? 'Home Journey activated' : visibleState ? 'Waiting for Elise' : 'No action yet'}</strong></div></div>
-        </section>}
-        {error && <div className="notice error" role="alert"><Icon name="info" size={17}/>{error}<button onClick={() => setError('')}>Dismiss</button></div>}
-        {message && <div className="notice success" role="status"><Icon name="check" size={17}/>{message}</div>}
-        {view === 'customer' ? <div className="grid">
-          <main>
-            <div className="section-title"><h2>Your money, at a glance</h2><span>Demo account</span></div>
-            <div className="account-card"><div className="account-top"><span>CURRENT ACCOUNT</span><span className="account-rings"><i/><i/></span></div><strong>€ 12,480.50</strong><div className="account-bottom"><span>Available balance</span><span>•••• 4829</span></div></div>
-            {!confirmed && <div className="section-title next-title"><h2>For you</h2><span>{visibleState ? 'A possible next step' : 'Everyday banking'}</span></div>}
-            {confirmed ? <section className="journey-card"><div className="journey-head"><div><span className="card-kicker">GOAL CONFIRMED BY ELISE</span><h2>Your Home Journey</h2><p>Explore one step at a time. You stay in control.</p></div><div className="journey-symbol"><Icon name="home" size={31}/></div></div><div className="journey-progress"><span>{journey?.steps.filter(step => step.status === 'done').length ?? 0} of 5 steps completed</span><div><span style={{ width: `${((journey?.steps.filter(step => step.status === 'done').length ?? 0) / 5) * 100}%` }}/></div></div><div className="journey-steps">{journey?.steps.map((step, index) => <button key={step.id} className={`journey-step ${step.status}`} disabled={step.status !== 'active' || busy} onClick={() => completeStep(step.id)}><span className="step-index">{step.status === 'done' ? <Icon name="check" size={16}/> : index + 1}</span><span>{step.title}</span><small>{step.status === 'done' ? 'Done' : step.status === 'active' ? 'Mark complete' : 'Upcoming'}</small></button>)}</div><button className="primary share-cta" onClick={() => setModal('share')}><Icon name="lock" size={17}/> Share with KBC Live <Icon name="arrow" size={17}/></button></section>
-              : visibleState ? <section className="state-card"><div className="state-card-top"><span className="card-kicker">COMPASS FOUND A POSSIBLE CONTEXT</span><span className="state-pill">POSSIBLE</span></div><h2>We think you may be exploring a home purchase</h2><p>Several independent signals now point in the same direction. This is still only a temporary hypothesis — Elise decides whether it is relevant.</p><div className="state-score"><strong>{score}%</strong><div><span>Compass confidence</span><small>Based on {state.evidence?.length ?? 0} observed signals · Expires {fmtDate(state.expiresAt)}</small></div></div><div className="score-bar"><span style={{ width: `${score}%` }}/></div><div className="evidence-preview">{state.evidence?.slice(0, 4).map(item => <span key={item.code}><Icon name="check" size={14}/>{item.label}</span>)}</div><div className="card-buttons"><button className="primary" onClick={confirm} disabled={busy}>Yes, help me explore <Icon name="arrow" size={17}/></button><button className="secondary" onClick={reject} disabled={busy}>Not relevant</button></div><div className="state-links"><button onClick={() => setModal('why')}>Why am I seeing this?</button></div></section>
-              : <section className="neutral-card"><div className="neutral-art"><div><Icon name="spark" size={38}/></div></div><div><span className="card-kicker">COMPASS STARTS WITH CONTEXT</span><h2>The right help starts with understanding the situation.</h2><p>Run the demo to watch five weak signals build into an explainable, temporary context. Compass will not act on that context until Elise confirms it.</p><button className="soft-button" onClick={playAll} disabled={busy || !nextEvent}>{busy ? 'Running demo…' : nextEvent ? 'Run Elise’s demo' : 'Demo complete'} <Icon name="arrow" size={16}/></button></div></section>}
-            {rejected && <div className="dismissed"><Icon name="check" size={18}/><span>Elise marked the home-purchase suggestion as not relevant. It will stay out of this demo.</span></div>}
-            {(visibleState || confirmed) && <section className="policy-card"><div className="section-title"><h2>What Compass refuses to automate</h2><span>{confirmed ? 'Customer-confirmed context' : 'Before confirmation'}</span></div><p>A possible life moment can shape what KBC asks, but it cannot automatically become a pre-approved credit offer.</p><button className="outline-button" onClick={evaluatePolicy} disabled={busy}>Show policy decision <Icon name="arrow" size={16}/></button>{policy && <div className="blocked"><span>{policy.decision}</span><div><strong>Pre-approved mortgage offer</strong><p>{policy.reason}</p><small>Safe alternative: ask Elise to confirm her goal, then offer educational steps.</small></div></div>}</section>}
-          </main>
-          <aside className="simulation"><div className="sim-head"><div className="sim-icon"><Icon name="pulse" size={19}/></div><div><strong>See Compass think</strong><small>Signals → context → safe action</small></div><span className="live-tag">LIVE</span></div><div className="sim-body"><div className="sim-label">ELISE’S STORY</div><div className="controls"><button className="play-next" onClick={playAll} disabled={!nextEvent || busy}>{busy ? 'Running…' : nextEvent ? 'Run demo' : 'Demo complete'} <Icon name="arrow" size={17}/></button><button className="play-all" onClick={playNext} disabled={!nextEvent || busy}>{nextEvent ? 'Next signal' : 'Done'}</button></div><button className="reset" onClick={reset} disabled={busy}><Icon name="reset" size={16}/> Reset demo</button><div className="divider"/><div className="sim-label">WHAT KBC OBSERVES <span>{events.length}/5</span></div><div className="event-list">{events.length ? events.map((event, index) => <div className="event" key={event.id}><div className="event-symbol">{index + 1}</div><div><strong>{event.title}</strong><small>{event.source} · Compass score {DEMO_SCORES[index]}</small></div></div>) : <div className="empty-events"><Icon name="clock" size={24}/><strong>Waiting for the first signal</strong><small>Press Run demo to begin Elise’s story.</small></div>}</div><div className="divider"/><div className="sim-label">WHAT COMPASS UNDERSTANDS</div><div className="confidence-box"><span>{state ? state.status === 'confirmed' ? 'Goal confirmed by Elise' : state.status === 'rejected' ? 'Hypothesis rejected' : score >= 60 ? 'Possible Home Purchase' : 'Below activation threshold' : score > 0 ? 'Below activation threshold' : 'No hypothesis yet'}</span><strong>{score}<small>/ 100</small></strong><div className="score-bar"><span style={{ width: `${score}%` }}/></div><p>{score < 60 ? 'A customer-facing card appears at 60.' : confirmed ? 'Customer confirmation changes the experience.' : rejected ? 'The inference will not reactivate during cooldown.' : 'Several signals now support a temporary hypothesis.'}</p></div><div className="score-steps">{DEMO_SCORES.map((number, index) => <div className={index <= events.length ? 'reached' : ''} key={index}><i/><span>{number}</span></div>)}</div><div className="sim-foot">Observed events are synthetic. Compass confidence is a rule score, not a probability.</div></div></aside>
-        </div> : <Adviser passport={passport} onBack={() => setView('customer')}/>}
+      <div className="quick-actions">
+        <button><span><Icon name="transfer"/></span>Transfer</button><button><span><Icon name="card"/></span>Cards</button><button><span><Icon name="home"/></span>Home</button>
       </div>
-    </div>
-    {modal === 'why' && <div className="backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setModal(null); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="why-title"><button className="close" aria-label="Close" onClick={() => setModal(null)}><Icon name="close"/></button><div className="modal-symbol"><Icon name="compass" size={25}/></div><span className="eyebrow">TRANSPARENT BY DESIGN</span><h2 id="why-title">Why am I seeing this?</h2><p>Compass noticed several observed signals. “Possible Home Purchase” is an <strong>inference</strong>, not a fact about Elise or a credit decision.</p><div className="modal-score"><span>Compass confidence</span><strong>{score}/100</strong></div><div className="score-bar"><span style={{ width: `${score}%` }}/></div><div className="freshness"><Icon name="clock" size={16}/> Temporary state · expires {fmtDate(state?.expiresAt)}</div><div className="evidence-heading">OBSERVED SIGNALS <span>CONTRIBUTION</span></div><div className="evidence-list">{state?.evidence?.map(item => <div key={item.code}><span><Icon name="check" size={16}/>{item.label}</span><strong>+{item.weight}</strong></div>)}</div><div className="modal-footer"><button className="primary" onClick={confirm} disabled={busy}>Yes, help me explore</button><button className="secondary" onClick={reject} disabled={busy}>Not relevant</button></div></section></div>}
-    {modal === 'share' && <div className="backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setModal(null); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="share-title"><button className="close" aria-label="Close" onClick={() => setModal(null)}><Icon name="close"/></button><div className="modal-symbol"><Icon name="lock" size={25}/></div><span className="eyebrow">EXPLICIT SHARING</span><h2 id="share-title">Share context with KBC Live</h2><p>Choose exactly what Elise’s adviser can see for a home exploration conversation.</p><div className="share-meta"><div><span>PURPOSE</span><strong>KBC Live home exploration</strong></div><div><span>EXPIRES</span><strong>24 hours after sharing</strong></div></div><div className="evidence-heading">SELECTED FIELDS</div><div className="share-fields">{SHARE_FIELDS.map(([key, title, detail]) => <label key={key}><input type="checkbox" checked={selectedFields.includes(key)} onChange={event => setSelectedFields(current => event.target.checked ? [...current, key] : current.filter(item => item !== key))}/><span><strong>{title}</strong><small>{detail}</small></span></label>)}</div><div className="excluded"><Icon name="shield" size={17}/><span>Not shared: raw transactions, full event log, unrelated balances or products.</span></div><button className="primary modal-primary" onClick={share} disabled={busy || selectedFields.length === 0}>Confirm and create Context Passport <Icon name="arrow" size={17}/></button></section></div>}
+
+      {visible&&<section className="care-panel">
+        <div className="care-icon"><Icon name="home" size={24}/></div><div className="care-copy"><span>For you</span><h2>Thinking about a home?</h2><p>Some recent activity suggests you may be exploring a home purchase. If that’s right, we can help you take the next steps at your pace.</p>
+        <div className="care-actions"><button className="primary-btn" onClick={confirm} disabled={busy}>Yes, help me explore</button><button className="text-btn" onClick={reject} disabled={busy}>Not right now</button></div>
+        <button className="why-link" onClick={()=>setModal('why')}>Why am I seeing this?</button></div>
+      </section>}
+
+      {confirmed&&<section className="journey">
+        <div className="section-heading"><div><span className="overline">YOUR HOME JOURNEY</span><h2>One step at a time</h2><p>Pick up where you left off. You decide what happens next.</p></div><Icon name="home" size={26}/></div>
+        <div className="journey-list">{journey?.steps.map((step,i)=><button key={step.id} className={'journey-row '+step.status} disabled={step.status!=='active'||busy} onClick={()=>completeStep(step.id)}><span className="step">{step.status==='done'?<Icon name="check" size={16}/>:i+1}</span><strong>{step.title}</strong><small>{step.status==='done'?'Done':step.status==='active'?'Continue':'Later'}</small></button>)}</div>
+        <button className="primary-btn share-btn" onClick={()=>setModal('share')}><Icon name="lock" size={16}/> Talk to a KBC adviser</button>
+      </section>}
+
+      {!visible&&!confirmed&&state?.status!=='rejected'&&<section className="everyday"><div><span className="overline">KBC CARE</span><h2>Banking that adapts to what matters to you</h2><p>When your situation changes, KBC Care can make useful help easier to find — without turning every signal into an offer.</p></div><button className="primary-btn" onClick={playAll} disabled={busy||!nextEvent}>{busy?'Updating…':nextEvent?'See the demo':'Demo complete'}</button></section>}
+
+      <section className="activity">
+        <div className="section-heading"><h2>Recent activity</h2><button>See all</button></div>
+        <div className="transactions">{TRANSACTIONS.map(([name,date,amount])=><div className="transaction" key={name}><div className="merchant">{name[0]}</div><div><strong>{name}</strong><small>{date}</small></div><b className={amount.startsWith('+')?'positive':''}>{amount}</b></div>)}</div>
+      </section>
+    </main>
+
+    <button className="kate-fab" onClick={()=>setModal('kate')}><span><Icon name="spark" size={18}/></span> Ask Kate</button>
+
+    {modal&&<div className="backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(null)}}>
+      {modal==='kate'&&<section className="sheet kate-sheet"><SheetClose onClose={()=>setModal(null)}/><span className="overline">KATE · KBC CARE</span><h2>Hi Elise, how can I help?</h2><p>I can explain what changed, help you understand your next steps, or point you to the right KBC support.</p><div className="suggestions"><button>{visible?'Why did my home guidance change?':'What changed this month?'}</button><button>Can I afford my upcoming payments?</button><button>What can KBC help me with?</button></div><div className="kate-answer"><Icon name="spark" size={18}/><p>{visible?'I noticed a few signals that may fit with exploring a home purchase. Nothing has been decided for you — you can confirm whether that is relevant.':'Your accounts look ready for everyday banking. If something changes, I can help you understand the options available.'}</p></div></section>}
+      {modal==='why'&&<section className="sheet"><SheetClose onClose={()=>setModal(null)}/><span className="overline">WHY THIS APPEARED</span><h2>You stay in control</h2><p>We noticed a pattern across recent activity that may fit with exploring a home purchase. We use it only to decide whether this guidance might be useful.</p><div className="privacy-note"><Icon name="shield"/><div><strong>This is not a credit decision.</strong><p>It does not approve a loan or automatically start an application. You can dismiss it at any time.</p></div></div><button className="primary-btn" onClick={confirm}>Yes, this is relevant</button></section>}
+      {modal==='share'&&<section className="sheet"><SheetClose onClose={()=>setModal(null)}/><span className="overline">TALK TO KBC LIVE</span><h2>Choose what your adviser can see</h2><p>Only the context you select below will be shared for this conversation.</p><div className="share-fields">{SHARE_FIELDS.map(([key,title,detail])=><label key={key}><input type="checkbox" checked={selectedFields.includes(key)} onChange={e=>setSelectedFields(x=>e.target.checked?[...x,key]:x.filter(v=>v!==key))}/><span><strong>{title}</strong><small>{detail}</small></span></label>)}</div><button className="primary-btn full" onClick={share} disabled={!selectedFields.length||busy}>Continue to KBC Live</button>{passport&&<button className="text-btn full" onClick={openAdviser}>Open adviser view</button>}</section>}
+      {modal==='demo'&&<section className="sheet demo-sheet"><SheetClose onClose={()=>setModal(null)}/><span className="overline">HACKATHON DEMO</span><h2>Elise’s story</h2><p>This panel is for the demo operator, not the customer experience.</p><div className="demo-status"><strong>{events.length} / {DEMO_EVENTS.length}</strong><span>signals applied</span></div><div className="demo-events">{events.map((e,i)=><div key={e.id}><Icon name="check" size={15}/><span>{e.title}</span></div>)}</div><div className="demo-buttons"><button className="primary-btn" onClick={playAll} disabled={!nextEvent||busy}>{nextEvent?'Run full story':'Story complete'}</button><button className="secondary-btn" onClick={playNext} disabled={!nextEvent||busy}>Next signal</button><button className="text-btn" onClick={reset}><Icon name="reset" size={15}/> Reset</button></div><small className="technical">Internal rule score: {confidence}/100. Hidden from the normal customer view.</small></section>}
+    </div>}
   </div>;
 }
 
-function Adviser({ passport, onBack }) {
-  const fields = passport?.fields || {};
-  const hasGoal = Object.prototype.hasOwnProperty.call(fields, 'confirmedGoal');
-  const hasProgress = Object.prototype.hasOwnProperty.call(fields, 'journeyProgress');
-  const hasQuestions = Object.prototype.hasOwnProperty.call(fields, 'unresolvedQuestions');
-  const completed = Array.isArray(fields.journeyProgress) ? fields.journeyProgress : [];
-  const questions = Array.isArray(fields.unresolvedQuestions) ? fields.unresolvedQuestions : [];
+function SheetClose({onClose}){return <button className="sheet-close" onClick={onClose} aria-label="Close"><Icon name="close"/></button>}
 
-  return <div className="adviser-workspace">
-    <section className="passport">
-      <div className="passport-head"><div><span className="card-kicker">SHARED BY CUSTOMER</span><h2>Elise’s Context Passport</h2><p>For a KBC Live home exploration conversation.</p></div><div className="passport-mark"><Icon name="shield" size={30}/></div></div>
-      <div className="passport-meta"><span><Icon name="clock" size={17}/> Expires {fmtDate(passport?.expiresAt)}</span><span><Icon name="lock" size={17}/> Customer-approved scope</span></div>
-      <div className="passport-fields">{passport && Object.entries(fields).map(([key, value]) => <div key={key}><span>{SHARE_FIELDS.find(([field]) => field === key)?.[1] || key}</span><strong>{Array.isArray(value) ? (value.length ? value.join(' · ') : 'None shared') : value}</strong></div>)}</div>
-      <div className="passport-note">This view contains approved context only. Raw transactions and full event history are excluded.</div>
+function Adviser({passport,onBack}){
+  const fields=passport?.fields||{}, completed=Array.isArray(fields.journeyProgress)?fields.journeyProgress:[];
+  return <div className="adviser-page"><header className="adviser-header"><div className="kbc-logo"><span>KBC</span><b>Care</b></div><div><span>Adviser workspace</span><div className="avatar">KL</div></div></header>
+    <main className="adviser-content"><button className="back-link" onClick={onBack}>← Back to customer view</button><div className="adviser-title"><div><span className="overline">CUSTOMER CONTEXT</span><h1>Elise</h1><p>Home exploration · customer-approved context</p></div><span className="consent"><Icon name="shield" size={16}/> Consent active</span></div>
+    <div className="adviser-grid"><section className="adviser-main">
+      <div className="adviser-section"><h2>Current situation</h2><div className="situation"><div className="care-icon"><Icon name="home"/></div><div><strong>Exploring a home purchase</strong><p>Elise confirmed this goal and chose to share it for this conversation.</p></div></div></div>
+      <div className="adviser-section"><h2>What Elise shared</h2>{Object.entries(fields).map(([key,value])=><div className="shared-row" key={key}><span>{SHARE_FIELDS.find(([f])=>f===key)?.[1]||key}</span><strong>{Array.isArray(value)?(value.length?value.join(' · '):'None shared'):value}</strong></div>)}</div>
+      <div className="adviser-section"><h2>Recommended approach</h2><div className="approach"><strong>Continue from where Elise left off</strong><p>{completed.length?completed.length+' journey step(s) completed. Ask what she would like to cover next.':'Start by clarifying what Elise wants to understand before discussing products.'}</p></div></div>
     </section>
-
-    <aside className="kate-card">
-      <div className="kate-head"><div className="kate-avatar"><Icon name="spark" size={22}/></div><div><span>KATE</span><strong>AI Adviser Copilot</strong></div><i>READY</i></div>
-      <div className="kate-scope"><Icon name="shield" size={16}/><span>Uses only the context Elise approved for this conversation.</span></div>
-      <div className="kate-section"><small>CUSTOMER BRIEFING</small><p>{hasGoal ? 'Elise has confirmed that she wants to explore a home purchase.' : 'Elise did not share her confirmed goal.'}{hasProgress ? ` She has completed ${completed.length} journey step${completed.length === 1 ? '' : 's'}.` : ''}</p></div>
-      <div className="kate-section"><small>SUGGESTED OPENING</small><blockquote>{hasGoal ? '“Hi Elise. I can see you chose to share that you’re exploring a home purchase. Where would you like to pick up today?”' : '“Hi Elise. I only have the context you chose to share. What would you like help with today?”'}</blockquote></div>
-      {hasQuestions && <div className="kate-section"><small>QUESTIONS TO COVER</small>{questions.length ? <ul>{questions.slice(0, 3).map(question => <li key={question}>{question}</li>)}</ul> : <p>No unresolved questions were shared.</p>}</div>}
-      <div className="kate-section"><small>RECOMMENDED NEXT STEP</small><p>{hasProgress && completed.length ? 'Continue from the next unfinished Home Journey step and answer Elise’s open questions.' : 'Clarify Elise’s goal before suggesting the next educational step.'}</p></div>
-      <div className="kate-guardrail"><Icon name="lock" size={15}/><span>Kate can summarize and suggest questions. She cannot approve credit, change policy decisions or access unshared data.</span></div>
-    </aside>
-
-    <div className="adviser-actions"><div><Icon name="user" size={20}/><span><strong>Human adviser stays in control</strong><small>Kate prepares the conversation; the adviser decides what to say and do.</small></span></div><button className="outline-button" onClick={onBack}>Back to Elise’s view</button></div>
-  </div>;
+    <aside className="adviser-side"><div className="kate-adviser"><div className="kate-title"><span><Icon name="spark"/></span><div><small>KATE</small><strong>Conversation assistant</strong></div></div><p className="scope"><Icon name="lock" size={15}/> Uses only customer-approved context.</p><div className="brief"><small>SUGGESTED OPENING</small><blockquote>“Hi Elise. I can see you’re exploring a home purchase. Where would you like to pick up today?”</blockquote></div><div className="brief"><small>NEXT STEP</small><p>Focus on guidance first. Let Elise choose when she wants to discuss a product.</p></div><div className="guardrail">Kate can prepare the conversation. The adviser remains responsible for every action.</div></div>
+    <div className="consent-card"><Icon name="shield"/><div><strong>Shared for 24 hours</strong><p>Raw transactions and unrelated account data are not included.</p><small>Expires {fmtDate(passport?.expiresAt)}</small></div></div></aside></div></main></div>
 }
