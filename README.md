@@ -244,6 +244,21 @@ A production deployment should instead use stateless API workers with shared per
 - The public demo has no production authentication and must not be treated as a real banking system.
 - If the temporary Qwiklabs project blocks Cloud Run, service enablement or public IAM, keep the local demo as the source of truth rather than redesigning the application around lab restrictions.
 
+## Deploy to Google Cloud Run
+
+For a public hackathon URL, use Google Cloud Shell:
+
+```bash
+gcloud config set project qwiklabs-gcp-04-b5a99cc66fcf
+git clone https://github.com/gogolumo/hackathon.git
+cd hackathon
+bash scripts/deploy_gcp.sh qwiklabs-gcp-04-b5a99cc66fcf
+```
+
+This deploys the FastAPI backend and Next.js frontend as separate Cloud Run services, wires the frontend to the generated backend URL, verifies the integration, and prints the public App URL.
+
+Full guide: [docs/CLOUD_RUN.md](docs/CLOUD_RUN.md)
+
 ## Demo flow
 
 A presenter should be able to tell the whole story in a few actions:
