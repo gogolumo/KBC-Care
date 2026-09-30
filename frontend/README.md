@@ -29,3 +29,10 @@ The first `salary_received` event adds no home-purchase evidence. The backend re
 ## Current contract boundary
 
 The canonical demo does not include Pause. `docs/FRONTEND_SPEC.md` mentions it, but `docs/API_CONTRACT.md` and the current backend have no pause endpoint. The UI omits that control so it never suggests a preference was saved when it was not.
+
+
+## Kate AI Adviser Copilot
+
+Adviser View includes **Kate**, a demo-safe AI copilot that works only with fields Elise explicitly shared through the Context Passport. Kate creates a customer briefing, suggested opening, questions to cover and a recommended next step. In the hackathon MVP this guidance is deterministic and requires no external LLM, so the demo remains reliable.
+
+Kate is intentionally downstream of consent and policy. She cannot approve credit, override policy decisions, infer from hidden/raw events, or access fields that are absent from the Context Passport. This preserves the product boundary: Compass understands context, Policy protects, the customer controls sharing, and Kate assists the human adviser.

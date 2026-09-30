@@ -207,5 +207,31 @@ export default function Page() {
 }
 
 function Adviser({ passport, onBack }) {
-  return <div className="adviser-layout"><section className="passport"><div className="passport-head"><div><span className="card-kicker">SHARED BY CUSTOMER</span><h2>Elise’s Context Passport</h2><p>For a KBC Live home exploration conversation.</p></div><div className="passport-mark"><Icon name="shield" size={30}/></div></div><div className="passport-meta"><span><Icon name="clock" size={17}/> Expires {fmtDate(passport?.expiresAt)}</span><span><Icon name="lock" size={17}/> Customer-approved scope</span></div><div className="passport-fields">{passport && Object.entries(passport.fields).map(([key, value]) => <div key={key}><span>{SHARE_FIELDS.find(([field]) => field === key)?.[1] || key}</span><strong>{Array.isArray(value) ? value.join(' · ') : value}</strong></div>)}</div><div className="passport-note">This view contains approved context only. Raw transactions and full event history are excluded.</div></section><aside className="adviser-side"><div className="side-card-icon"><Icon name="user" size={25}/></div><h3>A warmer handoff</h3><p>Elise can continue the conversation without repeating her goal. The adviser receives only what she chose to share.</p><button className="outline-button" onClick={onBack}>Back to Elise’s view</button></aside></div>;
+  const fields = passport?.fields || {};
+  const hasGoal = Object.prototype.hasOwnProperty.call(fields, 'confirmedGoal');
+  const hasProgress = Object.prototype.hasOwnProperty.call(fields, 'journeyProgress');
+  const hasQuestions = Object.prototype.hasOwnProperty.call(fields, 'unresolvedQuestions');
+  const completed = Array.isArray(fields.journeyProgress) ? fields.journeyProgress : [];
+  const questions = Array.isArray(fields.unresolvedQuestions) ? fields.unresolvedQuestions : [];
+
+  return <div className="adviser-workspace">
+    <section className="passport">
+      <div className="passport-head"><div><span className="card-kicker">SHARED BY CUSTOMER</span><h2>Elise’s Context Passport</h2><p>For a KBC Live home exploration conversation.</p></div><div className="passport-mark"><Icon name="shield" size={30}/></div></div>
+      <div className="passport-meta"><span><Icon name="clock" size={17}/> Expires {fmtDate(passport?.expiresAt)}</span><span><Icon name="lock" size={17}/> Customer-approved scope</span></div>
+      <div className="passport-fields">{passport && Object.entries(fields).map(([key, value]) => <div key={key}><span>{SHARE_FIELDS.find(([field]) => field === key)?.[1] || key}</span><strong>{Array.isArray(value) ? (value.length ? value.join(' · ') : 'None shared') : value}</strong></div>)}</div>
+      <div className="passport-note">This view contains approved context only. Raw transactions and full event history are excluded.</div>
+    </section>
+
+    <aside className="kate-card">
+      <div className="kate-head"><div className="kate-avatar"><Icon name="spark" size={22}/></div><div><span>KATE</span><strong>AI Adviser Copilot</strong></div><i>READY</i></div>
+      <div className="kate-scope"><Icon name="shield" size={16}/><span>Uses only the context Elise approved for this conversation.</span></div>
+      <div className="kate-section"><small>CUSTOMER BRIEFING</small><p>{hasGoal ? 'Elise has confirmed that she wants to explore a home purchase.' : 'Elise did not share her confirmed goal.'}{hasProgress ? ` She has completed ${completed.length} journey step${completed.length === 1 ? '' : 's'}.` : ''}</p></div>
+      <div className="kate-section"><small>SUGGESTED OPENING</small><blockquote>{hasGoal ? '“Hi Elise. I can see you chose to share that you’re exploring a home purchase. Where would you like to pick up today?”' : '“Hi Elise. I only have the context you chose to share. What would you like help with today?”'}</blockquote></div>
+      {hasQuestions && <div className="kate-section"><small>QUESTIONS TO COVER</small>{questions.length ? <ul>{questions.slice(0, 3).map(question => <li key={question}>{question}</li>)}</ul> : <p>No unresolved questions were shared.</p>}</div>}
+      <div className="kate-section"><small>RECOMMENDED NEXT STEP</small><p>{hasProgress && completed.length ? 'Continue from the next unfinished Home Journey step and answer Elise’s open questions.' : 'Clarify Elise’s goal before suggesting the next educational step.'}</p></div>
+      <div className="kate-guardrail"><Icon name="lock" size={15}/><span>Kate can summarize and suggest questions. She cannot approve credit, change policy decisions or access unshared data.</span></div>
+    </aside>
+
+    <div className="adviser-actions"><div><Icon name="user" size={20}/><span><strong>Human adviser stays in control</strong><small>Kate prepares the conversation; the adviser decides what to say and do.</small></span></div><button className="outline-button" onClick={onBack}>Back to Elise’s view</button></div>
+  </div>;
 }
