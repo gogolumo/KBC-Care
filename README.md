@@ -83,7 +83,7 @@ And finally:
 
 That separation between **inference, consent and action** is the core concept.
 
-## Run locally
+## Local Development
 
 ### Fastest path — one command
 
@@ -163,6 +163,86 @@ If `pnpm` is not installed, you can use:
 npx --yes pnpm@12.8.1 install
 npx --yes pnpm@12.8.1 dev
 ```
+
+## Google Cloud Deployment
+
+Google Cloud is **not required for local development or the core demo**. The repository can be demonstrated entirely on a laptop with `make dev` / `bash start.sh`.
+
+For a judge-friendly public URL, the simplest hackathon deployment is a **single Cloud Run service** built from the root `Dockerfile`. The container keeps the same logical architecture:
+
+```text
+Browser
+   ↓
+Next.js frontend (public Cloud Run port)
+   ↓ /api/*
+FastAPI backend (internal port 8000)
+   ↓
+Mock / deterministic state & policy engine
+```
+
+This single-service layout is deliberate for the hackathon: it avoids CORS and cross-service configuration, preserves the existing relative `/api/*` contract, and keeps deployment to one public HTTPS URL. It is not presented as the target production architecture.
+
+### Prerequisites
+
+Use the temporary Google Cloud project supplied by the hackathon organizers. Sign in interactively; **never copy the temporary password, access tokens, service-account keys, or other credentials into this repository**.
+
+Install the Google Cloud CLI if it is not already available, then:
+
+```bash
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+gcloud config set run/region us-central1
+```
+
+If the hackathon account already opens an authenticated Cloud Shell, you can run the deployment commands there and skip `gcloud auth login`.
+
+### Deploy
+
+From the repository root:
+
+```bash
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+
+gcloud run deploy kbc-care \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars USE_MOCK_DATA=true \
+  --max-instances=1
+```
+
+Cloud Run returns a public HTTPS URL when deployment succeeds.
+
+Verify it:
+
+```bash
+SERVICE_URL="$(gcloud run services describe kbc-care --region us-central1 --format='value(status.url)')"
+
+curl "$SERVICE_URL/api/health"
+curl "$SERVICE_URL/api/customers"
+```
+
+Expected health response:
+
+```json
+{"ok":true,"mockMode":true}
+```
+
+Then open `$SERVICE_URL` in a browser and run the same demo flow as locally.
+
+### Why `--max-instances=1` for the hackathon demo?
+
+The MVP intentionally stores mutable demo state in memory. Multiple Cloud Run instances would each have separate state, so requests could observe different demo progress. Limiting the service to one instance keeps the public demo deterministic.
+
+A production deployment should instead use stateless API workers with shared persistence/cache, after which horizontal autoscaling can be enabled safely.
+
+### Cloud deployment boundaries
+
+- The Cloud Run deployment uses synthetic data only.
+- No Google Cloud credentials belong in `.env`, source files, Docker build arguments or Git history.
+- The service may reset demo state after a restart/cold replacement because the MVP state is in memory.
+- The public demo has no production authentication and must not be treated as a real banking system.
+- If the temporary Qwiklabs project blocks Cloud Run, service enablement or public IAM, keep the local demo as the source of truth rather than redesigning the application around lab restrictions.
 
 ## Demo flow
 
