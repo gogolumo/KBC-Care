@@ -3,11 +3,11 @@
 ## Canonical demo flow
 
 ```text
-Select Elise
+Open Elise demo
 ↓
-Generic KBC dashboard
+Neutral KBC dashboard
 ↓
-Start simulation
+Run demo
 ↓
 Events enter system
 ↓
@@ -46,12 +46,12 @@ Approved context only
 
 | Step | Screen | User action | Backend event/API | State change | UI response |
 |---:|---|---|---|---|---|
-| 1 | Persona selector | Select Elise | `GET /customers/elise` | none | Elise loaded |
-| 2 | KBC Home | Start simulation | `POST /simulation/reset`, then play | clean state | generic dashboard |
-| 3 | Event stream | Play next/all | `POST /simulation/events/:eventId` | evidence accumulates | event appears |
+| 1 | Customer view | Open the app | `GET /customers`, `GET /simulation/status` | restore current demo state | Elise loaded |
+| 2 | KBC Home | Reset if needed, then Run demo | `POST /simulation/reset`, then ordered simulation events | clean state | neutral dashboard |
+| 3 | Signal story | Run demo / Next signal | `POST /simulation/events/:eventId` | evidence accumulates | events and score update |
 | 4 | Compass card | none | `GET /customers/elise/state` | score crosses 60 | hypothesis card appears |
 | 5 | Why modal | Open details | state response | none | evidence + freshness shown |
-| 6 | Policy panel | Trigger evaluate | `POST /policy/evaluate` | policy decision logged | mortgage offer = BLOCKED |
+| 6 | Policy panel | Show policy decision | `POST /policy/evaluate` | policy decision logged | mortgage offer = BLOCK |
 | 7 | Compass card | Yes, help me explore | `POST /states/:id/confirm` | inferred → confirmed | card changes to confirmed goal |
 | 8 | Home Journey | Progress one task | `POST /journeys/:id/steps/:stepId/complete` | journey progress | checklist updates |
 | 9 | Share modal | Share with KBC Live | preview then `POST /context-passports` | consent record + passport | scoped preview + success |
