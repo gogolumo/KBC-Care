@@ -34,7 +34,7 @@ Request:
 ```
 Response:
 ```json
-{"ok":true,"customerId":"elise","state":null,"events":[]}
+{"ok":true,"customerId":"elise","confidence":0,"state":null,"events":[]}
 ```
 
 ### POST /simulation/events/:eventId
@@ -44,9 +44,12 @@ Response:
 ```json
 {
   "event":{"id":"evt_mortgage","type":"mortgage_simulation_completed"},
-  "state":{"id":"state_home","type":"possible_home_purchase","confidence":30,"status":"inferred"}
+  "confidence":30,
+  "state":null
 }
 ```
+
+The `confidence` field is always computed by the backend and is the frontend source of truth for the visible 0 → 30 → 45 → 63 → 83 progression. `state` remains `null` until the 60-point activation threshold is crossed.
 
 Errors: `404 EVENT_NOT_FOUND`, `409 EVENT_ALREADY_APPLIED`.
 
@@ -55,7 +58,7 @@ Request:
 ```json
 {"customerId":"elise","mode":"remaining"}
 ```
-Response: ordered applied events + final state.
+Response: ordered applied events + backend-computed `confidence` + final state.
 
 ## State
 

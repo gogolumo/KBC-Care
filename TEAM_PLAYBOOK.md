@@ -55,6 +55,27 @@ Do not build Emma/Lina or a second persona until this flow is fully integrated a
 
 If Vlad already has a working frontend locally, **pushing it is the first integration blocker**. Do not rebuild it from scratch just because it is not yet visible remotely.
 
+## Integration audit update — 2026-09-30
+
+| Frontend expectation | Backend reality | Mismatch | Fix |
+|---|---|---|---|
+| Use customer `elise` | `elise` is canonical | none | keep |
+| Show 30 → 45 → 63 → 83 from backend | backend previously returned `state: null` before 60 | frontend could not show 30/45 without duplicating scoring | event/reset/play responses now expose backend-computed `confidence` |
+| State card appears only after threshold | GET state is 404 before 60 | none | keep |
+| Call backend from localhost frontend | no CORS middleware | browser requests could fail | allow localhost:3000 / 127.0.0.1:3000 by default; override with `CORS_ORIGINS` |
+| Integrate current frontend | no remote frontend code exists in `main` or `vlad/frontend` | hard blocker | Vlad must push the working frontend; do not rebuild it blindly |
+
+Current integration status: **backend contract hardened; full frontend ↔ backend E2E still BLOCKED by missing remote frontend source**.
+
+Canonical frontend rule once pushed:
+
+```text
+POST event
+→ render response.confidence
+→ render response.state only when non-null
+→ never calculate confidence locally
+```
+
 ## Immediate team objective
 
 Stop adding new features.
