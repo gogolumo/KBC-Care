@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.domain import ContextPassport, PolicyDecision
 from app.repositories.factory import get_repository, mock_enabled
@@ -64,7 +64,7 @@ def utc_now() -> datetime:
 
 
 class CustomerBody(BaseModel):
-    customerId: str = "elise"
+    customerId: str = Field(default="elise", max_length=256)
 
 
 class PlayBody(CustomerBody):
@@ -73,18 +73,25 @@ class PlayBody(CustomerBody):
 
 
 class RejectBody(CustomerBody):
-    reason: str = "not_relevant"
+    reason: str = Field(default="not_relevant", max_length=256)
 
 
 class PolicyBody(CustomerBody):
-    stateId: str | None = None
-    action: str
+    stateId: str | None = Field(default=None, max_length=256)
+    action: str = Field(max_length=256)
 
 
 class PassportBody(CustomerBody):
-    purpose: str
-    selectedFields: list[str] = Field(default_factory=list)
+    purpose: str = Field(max_length=256)
+    selectedFields: list[str] = Field(default_factory=list, max_length=100)
     ttlHours: int = Field(default=24, ge=1, le=168)
+    
+    @field_validator('selectedFields')
+    @classmethod
+    def validate_field_names(cls, v):
+        if v and any(len(field) > 256 for field in v):
+            raise ValueError('Each field name must not exceed 256 characters')
+        return v
 
 
 @app.get("/api/health")
