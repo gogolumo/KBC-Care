@@ -28,6 +28,135 @@ The public deployment is a hackathon demo environment using synthetic/mock custo
 
 > The public hackathon deployment runs in a temporary Google Cloud/Qwiklabs environment and may expire after the event.
 
+## How to run everything
+
+There are three demo surfaces:
+
+```text
+KBC Care Web (Next.js)
+        │
+        ├── /api/*
+        ▼
+KBC Care Backend (FastAPI)
+        ▲
+        │
+KBC Care Mobile (Expo / React Native)
+```
+
+The web app and the mobile app use the same backend and the same synthetic Elise demo state.
+
+### 1. Run web + backend locally
+
+From the `main` branch:
+
+```bash
+git clone https://github.com/gogolumo/KBC-Care.git
+cd KBC-Care
+git checkout main
+make dev
+```
+
+If `make` is unavailable:
+
+```bash
+bash start.sh
+```
+
+Open:
+
+- Web app: http://localhost:3000
+- Backend API: http://127.0.0.1:8000
+- Health check: http://127.0.0.1:8000/api/health
+- Swagger: http://127.0.0.1:8000/docs
+
+### 2. Run the mobile app on a phone
+
+The mobile client currently lives in branch `benjamin/mobile` under `mobile/`.
+
+Use Node.js 20.19+ or Node.js 22+.
+
+```bash
+git clone https://github.com/gogolumo/KBC-Care.git
+cd KBC-Care
+git checkout benjamin/mobile
+cd mobile
+npm ci
+```
+
+For the easiest hackathon demo, connect the mobile client to the already deployed HTTPS backend:
+
+```bash
+EXPO_PUBLIC_API_URL="https://kbc-compass-api-kvd5257laq-ew.a.run.app" npx expo start
+```
+
+Then scan the QR code with Expo Go on Android, or with the Camera app on iPhone.
+
+If the phone cannot reach the local Expo server, use:
+
+```bash
+EXPO_PUBLIC_API_URL="https://kbc-compass-api-kvd5257laq-ew.a.run.app" npx expo start --tunnel
+```
+
+You can also preview the mobile UI in a browser:
+
+```bash
+EXPO_PUBLIC_API_URL="https://kbc-compass-api-kvd5257laq-ew.a.run.app" npx expo start --web
+```
+
+### 3. Deploy web + backend to Google Cloud Run
+
+Run this from Google Cloud Shell:
+
+```bash
+git clone https://github.com/gogolumo/KBC-Care.git
+cd KBC-Care
+git checkout main
+
+PROJECT_ID="$(gcloud config get-value project)"
+gcloud config set project "$PROJECT_ID"
+
+bash scripts/deploy_gcp.sh "$PROJECT_ID"
+```
+
+This deploys:
+
+- `kbc-compass-api` — FastAPI backend
+- `kbc-compass` — Next.js web application
+
+Current hackathon deployment:
+
+- Web: https://kbc-compass-kvd5257laq-ew.a.run.app
+- Backend: https://kbc-compass-api-kvd5257laq-ew.a.run.app
+- Swagger: https://kbc-compass-api-kvd5257laq-ew.a.run.app/docs
+
+### 4. Recommended demo setup
+
+For the final hackathon demo, the simplest reliable setup is:
+
+```text
+Laptop / judges
+→ Cloud Run web app
+
+Phone
+→ Expo mobile app
+→ same Cloud Run backend
+```
+
+Before presenting, verify:
+
+```bash
+curl https://kbc-compass-api-kvd5257laq-ew.a.run.app/api/health
+curl https://kbc-compass-kvd5257laq-ew.a.run.app/api/health
+```
+
+Expected backend response:
+
+```json
+{"ok":true,"mockMode":true}
+```
+
+No passwords, tokens, service-account keys or other credentials should be committed to the repository.
+
 ## The problem
 
 Banks already observe many useful signals: transactions, simulator usage, product journeys, documents and service interactions.
