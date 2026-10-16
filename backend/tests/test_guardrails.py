@@ -86,3 +86,89 @@ def test_context_passport_ttl_is_bounded(monkeypatch):
         "ttlHours": 0,
     })
     assert response.status_code == 422
+
+
+def test_policy_endpoint_rejects_oversized_fields(monkeypatch):
+    """Prevent resource exhaustion by rejecting requests with excessively large string fields."""
+    monkeypatch.setenv("USE_MOCK_DATA", "true")
+    reset_repo()
+    
+    # Test oversized customerId
+    response = client.post("/api/policy/evaluate", json={
+        "customerId": "x" * 257,
+        "action": "PRE_APPROVED_MORTGAGE_OFFER",
+    })
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    
+    # Test oversized stateId
+    response = client.post("/api/policy/evaluate", json={
+        "customerId": "elise",
+        "stateId": "x" * 257,
+        "action": "PRE_APPROVED_MORTGAGE_OFFER",
+    })
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    
+    # Test oversized action
+    response = client.post("/api/policy/evaluate", json={
+        "customerId": "elise",
+        "stateId": "state_home",
+        "action": "x" * 257,
+    })
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    
+    # Test valid request still works
+    response = client.post("/api/policy/evaluate", json={
+        "customerId": "elise",
+        "stateId": "state_home",
+        "action": "PRE_APPROVED_MORTGAGE_OFFER",
+    })
+    assert response.status_code == 200
+
+
+def test_passport_endpoint_rejects_oversized_fields(monkeypatch):
+    """Prevent resource exhaustion by rejecting requests with excessively large string fields."""
+    monkeypatch.setenv("USE_MOCK_DATA", "true")
+    reset_repo()
+    client.post("/api/simulation/play", json={"customerId": "elise", "mode": "remaining"})
+    client.post("/api/states/state_home/confirm", json={"customerId": "elise"})
+    
+    # Test oversized purpose
+    response = client.post("/api/context-passports", json={
+        "customerId": "elise",
+        "purpose": "x" * 257,
+        "selectedFields": ["confirmedGoal"],
+        "ttlHours": 24,
+    })
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    
+    # Test oversized field name in selectedFields
+    response = client.post("/api/context-passports", json={
+        "customerId": "elise",
+        "purpose": "kbc_live_home_exploration",
+        "selectedFields": ["x" * 257],
+        "ttlHours": 24,
+    })
+    assert response.status_code == 422
+    
+    # Test too many selectedFields
+    response = client.post("/api/context-passports", json={
+        "customerId": "elise",
+        "purpose": "kbc_live_home_exploration",
+        "selectedFields": [f"field_{i}" for i in range(101)],
+        "ttlHours": 24,
+    })
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    
+    # Test valid request still works
+    response = client.post("/api/context-passports", json={
+        "customerId": "elise",
+        "purpose": "kbc_live_home_exploration",
+        "selectedFields": ["confirmedGoal"],
+        "ttlHours": 24,
+    })
+    assert response.status_code == 201
